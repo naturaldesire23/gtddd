@@ -1,8 +1,6 @@
---// Player
 local Players = game:GetService("Players")
 local plr = Players.LocalPlayer
 
---// Key GUI
 local ScreenGui = Instance.new("ScreenGui", plr:WaitForChild("PlayerGui"))
 ScreenGui.Name = "KeySystem"
 
@@ -49,19 +47,15 @@ Label.Font = Enum.Font.GothamBold
 Label.TextSize = 16
 Label.TextColor3 = Color3.fromRGB(255, 255, 255)
 
---// Remotes
 local rs = game:GetService("ReplicatedStorage")
 local remotes = rs:WaitForChild("RemoteFunctions")
 
--- Auto Skip (enable once at start)
 task.delay(2, function()
     pcall(function()
         remotes.ToggleAutoSkip:InvokeServer(true)
         warn("[System] Auto Skip Enabled")
     end)
 end)
-
---=== GAME SCRIPTS ===--
 
 function load2xScript()
     warn("[System] Loaded 2x Speed Script")
@@ -107,7 +101,7 @@ function load2xScript()
     local function startGame()
         remotes.PlaceDifficultyVote:InvokeServer(difficulty)
         for _, p in ipairs(placements) do
-            task.delay(p.time + 2, function() -- +2 сек задержки
+            task.delay(p.time + 9, function()
                 placeUnit(p.unit, p.slot, p.data)
             end)
         end
@@ -164,7 +158,7 @@ function load3xScript()
     local function startGame()
         remotes.PlaceDifficultyVote:InvokeServer(difficulty)
         for _, p in ipairs(placements) do
-            task.delay(p.time + 2, function() -- +2 сек задержки
+            task.delay(p.time + 9, function()
                 placeUnit(p.unit, p.slot, p.data)
             end)
         end
@@ -177,7 +171,6 @@ function load3xScript()
     end
 end
 
---=== SPEED MENU ===--
 local function showSpeedMenu()
     Title.Text = "⚡ Select Speed"
     TextBox.Visible = false
@@ -210,7 +203,6 @@ local function showSpeedMenu()
     end)
 end
 
---=== KEY CHECK ===--
 CheckBtn.MouseButton1Click:Connect(function()
     if TextBox.Text == "GTD2025" then
         Label.Text = "✅ Key Accepted!"
@@ -223,5 +215,4 @@ CheckBtn.MouseButton1Click:Connect(function()
     end
 end)
 
--- Anti AFK
 loadstring(game:HttpGet("https://raw.githubusercontent.com/hassanxzayn-lua/Anti-afk/main/antiafkbyhassanxzyn"))();
