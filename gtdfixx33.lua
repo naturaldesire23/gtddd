@@ -73,7 +73,7 @@ function load2xScript()
     local function startGame()
         remotes.PlaceDifficultyVote:InvokeServer(difficulty)
         for _, p in ipairs(placements) do
-            task.delay(p.time + 12, function()
+            task.delay(p.time + 11, function()
                 placeUnit(p.unit, p.slot, p.data)
             end)
         end
@@ -130,7 +130,7 @@ function load3xScript()
     local function startGame()
         remotes.PlaceDifficultyVote:InvokeServer(difficulty)
         for _, p in ipairs(placements) do
-            task.delay(p.time + 12, function()
+            task.delay(p.time + 11, function()
                 placeUnit(p.unit, p.slot, p.data)
             end)
         end
