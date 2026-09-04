@@ -161,7 +161,6 @@ local function applyNoise(parent, opacity)
     ImageTransparency  = opacity or Theme.NoiseOpacity,
     ScaleType          = Enum.ScaleType.Tile,
     ZIndex             = 1,
-    IgnoreGuiInset     = false,
   }, parent)
 end
 
