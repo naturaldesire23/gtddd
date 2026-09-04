@@ -1,12 +1,10 @@
 --[[
-  Unified Angeli UI Library v6.1
+  Unified Angeli UI Library v6.2
   Features:
-    - Working Minimization (Smooth animation, collapses to header)
-    - Custom Background Support (Image URL/ID, Transparency, Blur)
-    - Dark/Light Theme Support (Applies instantly)
-    - Per-Toggle Keybinds & UI Toggle Keybind
-    - Modular Groupboxes & Tabs
-    - All UI elements (Input, Dropdown, Slider, Checkbox, Button)
+    - Full Color Customization (Background, Text, Controls, Strokes)
+    - Background System (URL/ID, Transparency, Overlay, Blur)
+    - Working Minimization
+    - All UI elements (Input, Dropdown, Slider, Checkbox, Button, Keybind)
 ]]
 
 local UserInputService = cloneref and cloneref(game:GetService('UserInputService')) or game:GetService('UserInputService')
@@ -103,87 +101,49 @@ local Library = {
     _dragging = false,
     _drag_start = nil,
     _container_position = nil,
-    _flag_registry = {}
+    _flag_registry = {},
+    _elements = {}
 }
 Library.__index = Library
 Library.Connections = Connections
 
--- ─── THEMES ───
-local Themes = {
-    dark = {
-        Background   = Color3.fromRGB(17, 17, 17),
-        Group        = Color3.fromRGB(22, 22, 22),
-        GroupStroke  = Color3.fromRGB(43, 43, 43),
-        Control      = Color3.fromRGB(40, 40, 40),
-        ControlHover = Color3.fromRGB(50, 50, 50),
-        Divider      = Color3.fromRGB(32, 32, 32),
-        Text         = Color3.fromRGB(229, 229, 232),
-        TextDim      = Color3.fromRGB(158, 158, 164),
-        TextSoft     = Color3.fromRGB(214, 214, 218),
-        HeaderText   = Color3.fromRGB(140, 140, 146),
-        TabSelected  = Color3.fromRGB(30, 30, 30),
-        TabHover     = Color3.fromRGB(26, 26, 26),
-        PillOff      = Color3.fromRGB(42, 42, 42),
-        KnobOff      = Color3.fromRGB(216, 216, 216),
-        PillOn       = Color3.fromRGB(236, 236, 236),
-        KnobOn       = Color3.fromRGB(18, 18, 20),
-        SliderTrack  = Color3.fromRGB(45, 45, 45),
-        SliderFill   = Color3.fromRGB(255, 255, 255),
-        Accent       = Color3.fromRGB(74, 144, 217),
-        AccentDark   = Color3.fromRGB(32, 96, 160),
-        Gradient = ColorSequence.new{
-            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(92, 92, 92)),
-            ColorSequenceKeypoint.new(0.34, Color3.fromRGB(18, 18, 18)),
-            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(0, 0, 0))
-        },
-        TabGradient = ColorSequence.new{
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
-            ColorSequenceKeypoint.new(0.7, Color3.fromRGB(155, 155, 155)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(58, 58, 58))
-        }
+-- ─── THEMES & CUSTOMIZATION ───
+local DefaultTheme = {
+    Background = Color3.fromRGB(0, 0, 0),
+    Group = Color3.fromRGB(20, 20, 20),
+    GroupStroke = Color3.fromRGB(45, 45, 45),
+    Control = Color3.fromRGB(30, 30, 30),
+    ControlHover = Color3.fromRGB(40, 40, 40),
+    Divider = Color3.fromRGB(35, 35, 35),
+    Text = Color3.fromRGB(238, 238, 242),
+    TextDim = Color3.fromRGB(142, 142, 151),
+    TextSoft = Color3.fromRGB(195, 195, 202),
+    Accent = Color3.fromRGB(224, 224, 224),
+    Gradient = ColorSequence.new{
+        ColorSequenceKeypoint.new(0.00, Color3.fromRGB(92, 92, 92)),
+        ColorSequenceKeypoint.new(0.34, Color3.fromRGB(18, 18, 18)),
+        ColorSequenceKeypoint.new(1.00, Color3.fromRGB(0, 0, 0))
     },
-    light = {
-        Background   = Color3.fromRGB(240, 240, 245),
-        Group        = Color3.fromRGB(255, 255, 255),
-        GroupStroke  = Color3.fromRGB(200, 200, 205),
-        Control      = Color3.fromRGB(235, 235, 240),
-        ControlHover = Color3.fromRGB(220, 220, 225),
-        Divider      = Color3.fromRGB(210, 210, 215),
-        Text         = Color3.fromRGB(20, 20, 25),
-        TextDim      = Color3.fromRGB(100, 100, 110),
-        TextSoft     = Color3.fromRGB(50, 50, 55),
-        HeaderText   = Color3.fromRGB(120, 120, 130),
-        TabSelected  = Color3.fromRGB(230, 230, 235),
-        TabHover     = Color3.fromRGB(220, 220, 225),
-        PillOff      = Color3.fromRGB(200, 200, 205),
-        KnobOff      = Color3.fromRGB(60, 60, 65),
-        PillOn       = Color3.fromRGB(80, 80, 85),
-        KnobOn       = Color3.fromRGB(240, 240, 245),
-        SliderTrack  = Color3.fromRGB(200, 200, 205),
-        SliderFill   = Color3.fromRGB(40, 40, 45),
-        Accent       = Color3.fromRGB(37, 99, 235),
-        AccentDark   = Color3.fromRGB(29, 78, 216),
-        Gradient = ColorSequence.new{
-            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(240, 240, 240)),
-            ColorSequenceKeypoint.new(0.34, Color3.fromRGB(255, 255, 255)),
-            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(245, 245, 245))
-        },
-        TabGradient = ColorSequence.new{
-            ColorSequenceKeypoint.new(0, Color3.fromRGB(20, 20, 20)),
-            ColorSequenceKeypoint.new(0.7, Color3.fromRGB(100, 100, 100)),
-            ColorSequenceKeypoint.new(1, Color3.fromRGB(180, 180, 180))
-        }
+    TabGradient = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(255, 255, 255)),
+        ColorSequenceKeypoint.new(0.7, Color3.fromRGB(155, 155, 155)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(58, 58, 58))
     }
 }
 
-local Theme = Themes.dark
+local Theme = {}
 local ConfigData = {
     BackgroundImage = "",
-    BackgroundTransparency = 0,
+    BackgroundTransparency = 0.5,
     OverlayTransparency = 0.3,
     BlurAmount = 0,
-    Theme = "dark"
+    Theme = {}
 }
+
+-- Deep copy default theme
+for k, v in pairs(DefaultTheme) do
+    Theme[k] = typeof(v) == "Color3" and Color3.new(v.R, v.G, v.B) or v
+end
 
 function Library.new()
     local self = setmetatable({ _tab = 0 }, Library)
@@ -332,6 +292,15 @@ function Library:remove_table_value(__table: any, table_value: string)
     end
 end
 
+function Library:hexToRGB(hex)
+    hex = hex:gsub("#","")
+    return Color3.fromRGB(tonumber("0x"..hex:sub(1,2)), tonumber("0x"..hex:sub(3,4)), tonumber("0x"..hex:sub(5,6)))
+end
+
+function Library:rgbToHex(color)
+    return string.format("#%02X%02X%02X", math.floor(color.R * 255), math.floor(color.G * 255), math.floor(color.B * 255))
+end
+
 function Library:create_ui()
     local old_Fallen = CoreGui:FindFirstChild('Fallen')
     if old_Fallen then
@@ -419,7 +388,7 @@ function Library:create_ui()
     Background.BorderSizePixel = 0
     Background.BorderColor3 = Color3.fromRGB(0, 0, 0)
     Background.Image = ''
-    Background.ImageTransparency = 0.5
+    Background.ImageTransparency = ConfigData.BackgroundTransparency or 0.5
     Background.ScaleType = Enum.ScaleType.Crop
     Background.Visible = false
     Background.ZIndex = 0
@@ -444,6 +413,18 @@ function Library:create_ui()
     Texture.ZIndex = 0
     Texture.Parent = Container
 
+    local Overlay = Instance.new("Frame")
+    Overlay.Name = "Overlay"
+    Overlay.Size = UDim2.new(1, 0, 1, 0)
+    Overlay.BackgroundTransparency = ConfigData.OverlayTransparency or 0.3
+    Overlay.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    Overlay.BorderSizePixel = 0
+    Overlay.ZIndex = 1
+    Overlay.Parent = Container
+    local OverlayCorner = Instance.new("UICorner")
+    OverlayCorner.CornerRadius = UDim.new(0, 10)
+    OverlayCorner.Parent = Overlay
+
     local SideBar = Instance.new("Frame")
     SideBar.Name = "GradientSide"
     SideBar.Parent = Container
@@ -461,7 +442,7 @@ function Library:create_ui()
     UICorner.Parent = Container
 
     local UIStroke = Instance.new('UIStroke')
-    UIStroke.Color = Color3.fromRGB(68, 68, 68)
+    UIStroke.Color = Theme.GroupStroke
     UIStroke.Transparency = 0.58
     UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     UIStroke.Parent = Container
@@ -513,6 +494,7 @@ function Library:create_ui()
     ClientName.TextSize = 16
     ClientName.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
     ClientName.Parent = Handler
+    table.insert(Library._elements, {obj = ClientName, prop = "TextColor3", tKey = "Text"})
 
     local Logo = Instance.new('ImageLabel')
     Logo.Name = 'Logo'
@@ -536,6 +518,7 @@ function Library:create_ui()
     Pin.BorderSizePixel = 0
     Pin.BackgroundColor3 = Theme.Accent
     Pin.Parent = Handler
+    table.insert(Library._elements, {obj = Pin, prop = "BackgroundColor3", tKey = "Accent"})
 
     local UICorner2 = Instance.new('UICorner')
     UICorner2.CornerRadius = UDim.new(1, 0)
@@ -550,6 +533,7 @@ function Library:create_ui()
     Divider.BorderSizePixel = 0
     Divider.BackgroundColor3 = Theme.Divider
     Divider.Parent = Handler
+    table.insert(Library._elements, {obj = Divider, prop = "BackgroundColor3", tKey = "Divider"})
 
     local Sections = Instance.new('Folder')
     Sections.Name = 'Sections'
@@ -598,6 +582,7 @@ function Library:create_ui()
     self._ui = Fallen
     self._container = Container
     self._background = Background
+    self._overlay = Overlay
     self._blur = nil
 
     local function on_drag(input: InputObject, process: boolean)
@@ -931,6 +916,7 @@ function Library:create_ui()
             Module.BorderSizePixel = 0
             Module.BackgroundColor3 = Theme.Group
             Module.Parent = settings.section
+            table.insert(Library._elements, {obj = Module, prop = "BackgroundColor3", tKey = "Group"})
 
             local UIListLayout_Mod = Instance.new('UIListLayout')
             UIListLayout_Mod.Padding = UDim.new(0, 2)
@@ -947,6 +933,7 @@ function Library:create_ui()
             UIStroke.Thickness = 1
             UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
             UIStroke.Parent = Module
+            table.insert(Library._elements, {obj = UIStroke, prop = "Color", tKey = "GroupStroke"})
 
             local ModuleScrollTrack = Instance.new('Frame')
             ModuleScrollTrack.Name = 'ModuleScrollTrack'
@@ -959,6 +946,7 @@ function Library:create_ui()
             ModuleScrollTrack.ZIndex = 20
             ModuleScrollTrack.Visible = false
             ModuleScrollTrack.Parent = Handler
+            table.insert(Library._elements, {obj = ModuleScrollTrack, prop = "BackgroundColor3", tKey = "Control"})
 
             local ModuleScrollTrackCorner = Instance.new('UICorner')
             ModuleScrollTrackCorner.CornerRadius = UDim.new(1, 0)
@@ -969,11 +957,12 @@ function Library:create_ui()
             ModuleScrollThumb.AnchorPoint = Vector2.new(0.5, 0)
             ModuleScrollThumb.Position = UDim2.new(0.5, 0, 0, 0)
             ModuleScrollThumb.Size = UDim2.new(1, 0, 0, 88)
-            ModuleScrollThumb.BackgroundColor3 = Theme.SliderFill
+            ModuleScrollThumb.BackgroundColor3 = Theme.Accent
             ModuleScrollThumb.BackgroundTransparency = 0.08
             ModuleScrollThumb.BorderSizePixel = 0
             ModuleScrollThumb.ZIndex = 21
             ModuleScrollThumb.Parent = ModuleScrollTrack
+            table.insert(Library._elements, {obj = ModuleScrollThumb, prop = "BackgroundColor3", tKey = "Accent"})
 
             local ModuleScrollThumbCorner = Instance.new('UICorner')
             ModuleScrollThumbCorner.CornerRadius = UDim.new(1, 0)
@@ -1074,6 +1063,7 @@ function Library:create_ui()
             ModuleName.BorderSizePixel = 0
             ModuleName.TextSize = 13
             ModuleName.Parent = Header
+            table.insert(Library._elements, {obj = ModuleName, prop = "TextColor3", tKey = "Text"})
 
             local LockIcon = Instance.new('ImageLabel')
             LockIcon.Name = 'LockIcon'
@@ -1087,6 +1077,7 @@ function Library:create_ui()
             LockIcon.BackgroundTransparency = 1
             LockIcon.BorderSizePixel = 0
             LockIcon.Parent = Header
+            table.insert(Library._elements, {obj = LockIcon, prop = "ImageColor3", tKey = "TextDim"})
 
             local Description = Instance.new('TextLabel')
             Description.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
@@ -1102,6 +1093,7 @@ function Library:create_ui()
             Description.BorderSizePixel = 0
             Description.TextSize = 10
             Description.Parent = Header
+            table.insert(Library._elements, {obj = Description, prop = "TextColor3", tKey = "TextDim"})
 
             local Toggle = Instance.new('Frame')
             Toggle.Name = 'Toggle'
@@ -1110,8 +1102,9 @@ function Library:create_ui()
             Toggle.AnchorPoint = Vector2.new(1, 0.5)
             Toggle.Size = UDim2.new(0, 30, 0, 16)
             Toggle.BorderSizePixel = 0
-            Toggle.BackgroundColor3 = Theme.PillOff
+            Toggle.BackgroundColor3 = Theme.Control
             Toggle.Parent = Header
+            table.insert(Library._elements, {obj = Toggle, prop = "BackgroundColor3", tKey = "Control", stateKey = false})
 
             local ToggleCorner = Instance.new('UICorner')
             ToggleCorner.CornerRadius = UDim.new(1, 0)
@@ -1124,8 +1117,9 @@ function Library:create_ui()
             Circle.Name = 'Circle'
             Circle.Size = UDim2.new(0, 12, 0, 12)
             Circle.BorderSizePixel = 0
-            Circle.BackgroundColor3 = Theme.KnobOff
+            Circle.BackgroundColor3 = Theme.TextDim
             Circle.Parent = Toggle
+            table.insert(Library._elements, {obj = Circle, prop = "BackgroundColor3", tKey = "TextDim", stateKey = false})
 
             local CircleCorner = Instance.new('UICorner')
             CircleCorner.CornerRadius = UDim.new(1, 0)
@@ -1141,6 +1135,7 @@ function Library:create_ui()
             Keybind.BorderSizePixel = 0
             Keybind.BackgroundColor3 = Theme.Control
             Keybind.Parent = Header
+            table.insert(Library._elements, {obj = Keybind, prop = "BackgroundColor3", tKey = "Control"})
 
             local Icon = Instance.new('ImageLabel')
             Icon.Name = 'Icon'
@@ -1154,6 +1149,7 @@ function Library:create_ui()
             Icon.BackgroundTransparency = 1
             Icon.BorderSizePixel = 0
             Icon.Parent = Header
+            table.insert(Library._elements, {obj = Icon, prop = "ImageColor3", tKey = "TextSoft"})
 
             Keybind.Position = UDim2.new(0, 34, 0, 67)
 
@@ -1167,6 +1163,7 @@ function Library:create_ui()
             KeybindStroke.Thickness = 1
             KeybindStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
             KeybindStroke.Parent = Keybind
+            table.insert(Library._elements, {obj = KeybindStroke, prop = "Color", tKey = "GroupStroke"})
 
             local TextLabel = Instance.new('TextLabel')
             TextLabel.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
@@ -1180,6 +1177,7 @@ function Library:create_ui()
             TextLabel.BorderSizePixel = 0
             TextLabel.TextSize = 10
             TextLabel.Parent = Keybind
+            table.insert(Library._elements, {obj = TextLabel, prop = "TextColor3", tKey = "TextSoft"})
 
             local Divider = Instance.new('Frame')
             Divider.BorderColor3 = Color3.fromRGB(0, 0, 0)
@@ -1191,6 +1189,7 @@ function Library:create_ui()
             Divider.BorderSizePixel = 0
             Divider.BackgroundColor3 = Theme.Divider
             Divider.Parent = Header
+            table.insert(Library._elements, {obj = Divider, prop = "BackgroundColor3", tKey = "Divider"})
 
             local Divider2 = Instance.new('Frame')
             Divider2.BorderColor3 = Color3.fromRGB(0, 0, 0)
@@ -1202,6 +1201,7 @@ function Library:create_ui()
             Divider2.BorderSizePixel = 0
             Divider2.BackgroundColor3 = Theme.Divider
             Divider2.Parent = Header
+            table.insert(Library._elements, {obj = Divider2, prop = "BackgroundColor3", tKey = "Divider"})
 
             local Options = Instance.new('Frame')
             Options.Name = 'Options'
@@ -1235,11 +1235,11 @@ function Library:create_ui()
                     }):Play()
 
                     TweenService:Create(Toggle, TweenInfo.new(0.28, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-                        BackgroundColor3 = Theme.PillOn
+                        BackgroundColor3 = Theme.Accent
                     }):Play()
 
                     TweenService:Create(Circle, TweenInfo.new(0.28, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-                        BackgroundColor3 = Theme.KnobOn,
+                        BackgroundColor3 = Theme.Group,
                         Position = UDim2.new(1, -14, 0.5, 0)
                     }):Play()
                 else
@@ -1248,11 +1248,11 @@ function Library:create_ui()
                     }):Play()
 
                     TweenService:Create(Toggle, TweenInfo.new(0.28, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-                        BackgroundColor3 = Theme.PillOff
+                        BackgroundColor3 = Theme.Control
                     }):Play()
 
                     TweenService:Create(Circle, TweenInfo.new(0.28, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-                        BackgroundColor3 = Theme.KnobOff,
+                        BackgroundColor3 = Theme.TextDim,
                         Position = UDim2.new(0, 2, 0.5, 0)
                     }):Play()
                 end
@@ -1300,12 +1300,12 @@ function Library:create_ui()
                 settings.callback(ModuleManager._state)
 
                 if ModuleManager._state then
-                    Toggle.BackgroundColor3 = Theme.PillOn
-                    Circle.BackgroundColor3 = Theme.KnobOn
+                    Toggle.BackgroundColor3 = Theme.Accent
+                    Circle.BackgroundColor3 = Theme.Group
                     Circle.Position = UDim2.new(1, -14, 0.5, 0)
                 else
-                    Toggle.BackgroundColor3 = Theme.PillOff
-                    Circle.BackgroundColor3 = Theme.KnobOff
+                    Toggle.BackgroundColor3 = Theme.Control
+                    Circle.BackgroundColor3 = Theme.TextDim
                     Circle.Position = UDim2.new(0, 2, 0.5, 0)
                 end
             end
@@ -1421,6 +1421,7 @@ function Library:create_ui()
                 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
                 TitleLabel.TextYAlignment = Enum.TextYAlignment.Center
                 TitleLabel.Parent = Row
+                table.insert(Library._elements, {obj = TitleLabel, prop = "TextColor3", tKey = "Text"})
 
                 local KeybindBox = Instance.new("TextButton")
                 KeybindBox.Name = "KeybindBox"
@@ -1432,6 +1433,7 @@ function Library:create_ui()
                 KeybindBox.AutoButtonColor = false
                 KeybindBox.Text = ""
                 KeybindBox.Parent = Row
+                table.insert(Library._elements, {obj = KeybindBox, prop = "BackgroundColor3", tKey = "Control"})
 
                 local KeybindCorner = Instance.new("UICorner")
                 KeybindCorner.CornerRadius = UDim.new(0, 2)
@@ -1443,6 +1445,7 @@ function Library:create_ui()
                 KeybindStroke.Thickness = 1
                 KeybindStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
                 KeybindStroke.Parent = KeybindBox
+                table.insert(Library._elements, {obj = KeybindStroke, prop = "Color", tKey = "GroupStroke"})
 
                 local KeybindLabel = Instance.new("TextLabel")
                 KeybindLabel.Name = "KeybindLabel"
@@ -1456,15 +1459,17 @@ function Library:create_ui()
                     and string.gsub(tostring(Library._config._keybinds[settings.flag]), "Enum.KeyCode.", "")
                     or "..."
                 KeybindLabel.Parent = KeybindBox
+                table.insert(Library._elements, {obj = KeybindLabel, prop = "TextColor3", tKey = "TextSoft"})
 
                 local Toggle = Instance.new("Frame")
                 Toggle.Name = "Toggle"
                 Toggle.Size = UDim2.fromOffset(31, 17)
                 Toggle.Position = UDim2.new(1, 0, 0.5, 0)
                 Toggle.AnchorPoint = Vector2.new(1, 0.5)
-                Toggle.BackgroundColor3 = Theme.PillOff
+                Toggle.BackgroundColor3 = Theme.Control
                 Toggle.BorderSizePixel = 0
                 Toggle.Parent = Row
+                table.insert(Library._elements, {obj = Toggle, prop = "BackgroundColor3", tKey = "Control", stateKey = false})
 
                 local ToggleStroke = Instance.new("UIStroke")
                 ToggleStroke.Color = Theme.GroupStroke
@@ -1472,6 +1477,7 @@ function Library:create_ui()
                 ToggleStroke.Thickness = 1
                 ToggleStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
                 ToggleStroke.Parent = Toggle
+                table.insert(Library._elements, {obj = ToggleStroke, prop = "Color", tKey = "GroupStroke"})
 
                 local ToggleCorner = Instance.new("UICorner")
                 ToggleCorner.CornerRadius = UDim.new(1, 0)
@@ -1482,9 +1488,10 @@ function Library:create_ui()
                 Knob.Size = UDim2.fromOffset(13, 13)
                 Knob.Position = UDim2.new(0, 2, 0.5, 0)
                 Knob.AnchorPoint = Vector2.new(0, 0.5)
-                Knob.BackgroundColor3 = Theme.KnobOff
+                Knob.BackgroundColor3 = Theme.TextDim
                 Knob.BorderSizePixel = 0
                 Knob.Parent = Toggle
+                table.insert(Library._elements, {obj = Knob, prop = "BackgroundColor3", tKey = "TextDim", stateKey = false})
 
                 local KnobCorner = Instance.new("UICorner")
                 KnobCorner.CornerRadius = UDim.new(1, 0)
@@ -1493,10 +1500,10 @@ function Library:create_ui()
                 function CheckboxManager:change_state(state: boolean)
                     self._state = state
                     TweenService:Create(Toggle, TweenInfo.new(0.28, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-                        BackgroundColor3 = state and Theme.PillOn or Theme.PillOff
+                        BackgroundColor3 = state and Theme.Accent or Theme.Control
                     }):Play()
                     TweenService:Create(Knob, TweenInfo.new(0.28, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
-                        BackgroundColor3 = state and Theme.KnobOn or Theme.KnobOff,
+                        BackgroundColor3 = state and Theme.Group or Theme.TextDim,
                         Position = state and UDim2.new(1, -15, 0.5, 0) or UDim2.new(0, 2, 0.5, 0)
                     }):Play()
                     Library._config._flags[settings.flag] = self._state
@@ -1511,12 +1518,12 @@ function Library:create_ui()
                 if Library:flag_type(settings.flag, "boolean") then
                     CheckboxManager._state = Library._config._flags[settings.flag]
                     if CheckboxManager._state then
-                        Toggle.BackgroundColor3 = Theme.PillOn
-                        Knob.BackgroundColor3 = Theme.KnobOn
+                        Toggle.BackgroundColor3 = Theme.Accent
+                        Knob.BackgroundColor3 = Theme.Group
                         Knob.Position = UDim2.new(1, -15, 0.5, 0)
                     else
-                        Toggle.BackgroundColor3 = Theme.PillOff
-                        Knob.BackgroundColor3 = Theme.KnobOff
+                        Toggle.BackgroundColor3 = Theme.Control
+                        Knob.BackgroundColor3 = Theme.TextDim
                         Knob.Position = UDim2.new(0, 2, 0.5, 0)
                     end
                     settings.callback(CheckboxManager._state)
@@ -1625,6 +1632,7 @@ function Library:create_ui()
                 TitleLabel.TextXAlignment = Enum.TextXAlignment.Left
                 TitleLabel.TextYAlignment = Enum.TextYAlignment.Center
                 TitleLabel.Parent = Row
+                table.insert(Library._elements, {obj = TitleLabel, prop = "TextColor3", tKey = "Text"})
 
                 local KeybindBox = Instance.new('TextButton')
                 KeybindBox.Name = 'KeybindBox'
@@ -1636,6 +1644,7 @@ function Library:create_ui()
                 KeybindBox.AutoButtonColor = false
                 KeybindBox.Text = ''
                 KeybindBox.Parent = Row
+                table.insert(Library._elements, {obj = KeybindBox, prop = "BackgroundColor3", tKey = "Control"})
 
                 local KeybindCorner = Instance.new('UICorner')
                 KeybindCorner.CornerRadius = UDim.new(0, 2)
@@ -1647,6 +1656,7 @@ function Library:create_ui()
                 KeybindStroke.Thickness = 1
                 KeybindStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
                 KeybindStroke.Parent = KeybindBox
+                table.insert(Library._elements, {obj = KeybindStroke, prop = "Color", tKey = "GroupStroke"})
 
                 local KeybindLabel = Instance.new('TextLabel')
                 KeybindLabel.Name = 'KeybindLabel'
@@ -1660,6 +1670,7 @@ function Library:create_ui()
                     and string.gsub(tostring(Library._config._keybinds[settings.flag]), 'Enum.KeyCode.', '')
                     or '...'
                 KeybindLabel.Parent = KeybindBox
+                table.insert(Library._elements, {obj = KeybindLabel, prop = "TextColor3", tKey = "TextSoft"})
 
                 local function resize_keybind_row()
                     local txt = KeybindLabel.Text
@@ -1770,6 +1781,7 @@ function Library:create_ui()
                 TextLabel.BorderColor3 = Color3.fromRGB(0, 0, 0)
                 TextLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
                 TextLabel.Parent = Slider
+                table.insert(Library._elements, {obj = TextLabel, prop = "TextColor3", tKey = "Text"})
 
                 local Drag = Instance.new('Frame')
                 Drag.BorderColor3 = Color3.fromRGB(0, 0, 0)
@@ -1779,8 +1791,9 @@ function Library:create_ui()
                 Drag.Name = 'Drag'
                 Drag.Size = UDim2.new(0, 207, 0, 6)
                 Drag.BorderSizePixel = 0
-                Drag.BackgroundColor3 = Theme.SliderTrack
+                Drag.BackgroundColor3 = Theme.Group
                 Drag.Parent = Slider
+                table.insert(Library._elements, {obj = Drag, prop = "BackgroundColor3", tKey = "Group"})
 
                 local UICorner = Instance.new('UICorner')
                 UICorner.CornerRadius = UDim.new(1, 0)
@@ -1794,8 +1807,9 @@ function Library:create_ui()
                 Fill.Name = 'Fill'
                 Fill.Size = UDim2.new(0, 103, 0, 6)
                 Fill.BorderSizePixel = 0
-                Fill.BackgroundColor3 = Theme.SliderFill
+                Fill.BackgroundColor3 = Theme.Accent
                 Fill.Parent = Drag
+                table.insert(Library._elements, {obj = Fill, prop = "BackgroundColor3", tKey = "Accent"})
 
                 local UICorner = Instance.new('UICorner')
                 UICorner.CornerRadius = UDim.new(0, 3)
@@ -1808,19 +1822,21 @@ function Library:create_ui()
                 Circle.BorderColor3 = Color3.fromRGB(0, 0, 0)
                 Circle.Size = UDim2.new(0, 10, 0, 10)
                 Circle.BorderSizePixel = 0
-                Circle.BackgroundColor3 = Theme.SliderFill
+                Circle.BackgroundColor3 = Theme.Accent
                 Circle.Parent = Fill
+                table.insert(Library._elements, {obj = Circle, prop = "BackgroundColor3", tKey = "Accent"})
 
                 local UICorner = Instance.new('UICorner')
                 UICorner.CornerRadius = UDim.new(1, 0)
                 UICorner.Parent = Circle
 
                 local CircleStroke = Instance.new('UIStroke')
-                CircleStroke.Color = Theme.Background
+                CircleStroke.Color = Theme.Group
                 CircleStroke.Transparency = 0.58
                 CircleStroke.Thickness = 1
                 CircleStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
                 CircleStroke.Parent = Circle
+                table.insert(Library._elements, {obj = CircleStroke, prop = "Color", tKey = "Group"})
 
                 local Value = Instance.new('TextLabel')
                 Value.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
@@ -1838,6 +1854,7 @@ function Library:create_ui()
                 Value.TextSize = 10
                 Value.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
                 Value.Parent = Slider
+                table.insert(Library._elements, {obj = Value, prop = "TextColor3", tKey = "TextSoft"})
 
                 function SliderManager:set_percentage(percentage: number)
                     local rounded_number = 0
@@ -1934,6 +1951,8 @@ function Library:create_ui()
                 Btn.AutoButtonColor = false
                 Btn.Text = settings.title
                 Btn.Parent = Holder
+                table.insert(Library._elements, {obj = Btn, prop = "BackgroundColor3", tKey = "Control"})
+                table.insert(Library._elements, {obj = Btn, prop = "TextColor3", tKey = "Text"})
 
                 local BtnCorner = Instance.new('UICorner')
                 BtnCorner.CornerRadius = UDim.new(0, 4)
@@ -1945,6 +1964,7 @@ function Library:create_ui()
                 BtnStroke.Thickness = 1
                 BtnStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
                 BtnStroke.Parent = Btn
+                table.insert(Library._elements, {obj = BtnStroke, prop = "Color", tKey = "GroupStroke"})
 
                 Btn.MouseButton1Click:Connect(settings.callback)
             end
@@ -1983,6 +2003,9 @@ function Library:create_ui()
                 Box.Text = settings.value or ''
                 Box.ClearTextOnFocus = false
                 Box.Parent = Holder
+                table.insert(Library._elements, {obj = Box, prop = "BackgroundColor3", tKey = "Control"})
+                table.insert(Library._elements, {obj = Box, prop = "TextColor3", tKey = "Text"})
+                table.insert(Library._elements, {obj = Box, prop = "PlaceholderColor3", tKey = "TextDim"})
 
                 local BoxCorner = Instance.new('UICorner')
                 BoxCorner.CornerRadius = UDim.new(0, 4)
@@ -1994,6 +2017,7 @@ function Library:create_ui()
                 BoxStroke.Thickness = 1
                 BoxStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
                 BoxStroke.Parent = Box
+                table.insert(Library._elements, {obj = BoxStroke, prop = "Color", tKey = "GroupStroke"})
 
                 Box.FocusLost:Connect(function()
                     settings.callback(Box.Text)
@@ -2061,6 +2085,7 @@ function Library:create_ui()
                 TextLabel.BorderColor3 = Color3.fromRGB(0, 0, 0)
                 TextLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
                 TextLabel.Parent = Dropdown
+                table.insert(Library._elements, {obj = TextLabel, prop = "TextColor3", tKey = "Text"})
 
                 local Box = Instance.new('Frame')
                 Box.ClipsDescendants = true
@@ -2073,6 +2098,7 @@ function Library:create_ui()
                 Box.BorderSizePixel = 0
                 Box.BackgroundColor3 = Theme.Control
                 Box.Parent = TextLabel
+                table.insert(Library._elements, {obj = Box, prop = "BackgroundColor3", tKey = "Control"})
 
                 local UICorner = Instance.new('UICorner')
                 UICorner.CornerRadius = UDim.new(0, 5)
@@ -2084,6 +2110,7 @@ function Library:create_ui()
                 BoxStroke.Thickness = 1
                 BoxStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
                 BoxStroke.Parent = Box
+                table.insert(Library._elements, {obj = BoxStroke, prop = "Color", tKey = "GroupStroke"})
 
                 local Header = Instance.new('Frame')
                 Header.BorderColor3 = Color3.fromRGB(0, 0, 0)
@@ -2111,6 +2138,8 @@ function Library:create_ui()
                 CurrentOption.TextSize = 11
                 CurrentOption.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
                 CurrentOption.Parent = Header
+                table.insert(Library._elements, {obj = CurrentOption, prop = "TextColor3", tKey = "Text"})
+                
                 local UIGradient = Instance.new('UIGradient')
                 UIGradient.Transparency = NumberSequence.new{
                     NumberSequenceKeypoint.new(0, 0),
@@ -2132,6 +2161,7 @@ function Library:create_ui()
                 Arrow.BorderSizePixel = 0
                 Arrow.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
                 Arrow.Parent = Header
+                table.insert(Library._elements, {obj = Arrow, prop = "ImageColor3", tKey = "TextDim"})
 
                 local Options = Instance.new('ScrollingFrame')
                 Options.ScrollBarImageColor3 = Color3.fromRGB(0, 0, 0)
@@ -2308,6 +2338,8 @@ function Library:create_ui()
                         Option.BorderSizePixel = 0
                         Option.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
                         Option.Parent = Options
+                        table.insert(Library._elements, {obj = Option, prop = "TextColor3", tKey = "Text"})
+                        
                         local UIGradient = Instance.new('UIGradient')
                         UIGradient.Transparency = NumberSequence.new{
                             NumberSequenceKeypoint.new(0, 0),
@@ -2355,6 +2387,7 @@ function Library:create_ui()
                         Option.BorderSizePixel = 0
                         Option.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
                         Option.Parent = Options
+                        table.insert(Library._elements, {obj = Option, prop = "TextColor3", tKey = "Text"})
 
                         local UIGradient = Instance.new('UIGradient')
                         UIGradient.Transparency = NumberSequence.new{
@@ -2411,7 +2444,31 @@ function Library:create_ui()
     end
 
     -- ─── CUSTOMIZATION API ───
-    function self:SetBackground(image, transparency, scaleType)
+    function self:SetColor(key, color)
+        Theme[key] = color
+        for _, element in ipairs(Library._elements) do
+            if element.tKey == key then
+                if element.stateKey ~= nil then
+                    -- Handle state-specific colors if needed in the future
+                else
+                    element.obj[element.prop] = color
+                end
+            end
+        end
+        if key == "Gradient" then
+            ContainerGradient.Color = color
+            SideGradient.Color = color
+        elseif key == "GroupStroke" then
+            UIStroke.Color = color
+        end
+        self:SaveConfig()
+    end
+
+    function self:GetColor(key)
+        return Theme[key]
+    end
+
+    function self:SetBackground(image, transparency)
         if image and image ~= "" then
             Background.Image = image
             Background.Visible = true
@@ -2424,12 +2481,17 @@ function Library:create_ui()
             Background.ImageTransparency = transparency
             ConfigData.BackgroundTransparency = transparency
         end
-        if scaleType then
-            Background.ScaleType = scaleType
+        self:SaveConfig()
+    end
+
+    function self:SetOverlay(transparency)
+        if transparency ~= nil then
+            Overlay.BackgroundTransparency = transparency
+            ConfigData.OverlayTransparency = transparency
         end
         self:SaveConfig()
     end
-    
+
     function self:SetBlur(amount)
         if amount and amount > 0 then
             if not self._blur then
@@ -2452,30 +2514,15 @@ function Library:create_ui()
         self:SaveConfig()
     end
     
-    function self:SetTheme(themeName)
-        if themeName == "light" then
-            Theme = Themes.light
-        elseif themeName == "dark" then
-            Theme = Themes.dark
-        else
-            return
-        end
-        ConfigData.Theme = themeName
-        
-        ContainerGradient.Color = Theme.Gradient
-        SideGradient.Color = Theme.Gradient
-        ClientName.TextColor3 = Theme.Text
-        Pin.BackgroundColor3 = Theme.Accent
-        Divider.BackgroundColor3 = Theme.Divider
-        UIStroke.Color = Theme.GroupStroke
-        
-        self:SaveConfig()
-        self:SendNotification({ title = "Theme", text = "Switched to " .. themeName .. " theme." })
-    end
-    
     function self:SaveConfig()
         pcall(function()
             if writefile then
+                ConfigData.Theme = {}
+                for k, v in pairs(Theme) do
+                    if typeof(v) == "Color3" then
+                        ConfigData.Theme[k] = self:rgbToHex(v)
+                    end
+                end
                 local json = HttpService:JSONEncode(ConfigData)
                 writefile("Fallen/UI_Config.json", json)
             end
@@ -2488,17 +2535,26 @@ function Library:create_ui()
                 local saved = readfile("Fallen/UI_Config.json")
                 if saved then
                     local data = HttpService:JSONDecode(saved)
-                    for k, v in pairs(data) do
-                        ConfigData[k] = v
+                    ConfigData.BackgroundImage = data.BackgroundImage or ""
+                    ConfigData.BackgroundTransparency = data.BackgroundTransparency or 0.5
+                    ConfigData.OverlayTransparency = data.OverlayTransparency or 0.3
+                    ConfigData.BlurAmount = data.BlurAmount or 0
+                    
+                    if data.Theme then
+                        for k, v in pairs(data.Theme) do
+                            if DefaultTheme[k] then
+                                self:SetColor(k, self:hexToRGB(v))
+                            end
+                        end
                     end
                 end
             end
         end)
         
-        if ConfigData.Theme == "light" then Theme = Themes.light else Theme = Themes.dark end
         if ConfigData.BackgroundImage and ConfigData.BackgroundImage ~= "" then
             self:SetBackground(ConfigData.BackgroundImage, ConfigData.BackgroundTransparency)
         end
+        self:SetOverlay(ConfigData.OverlayTransparency)
         if ConfigData.BlurAmount and ConfigData.BlurAmount > 0 then
             self:SetBlur(ConfigData.BlurAmount)
         end
