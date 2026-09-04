@@ -1,4 +1,4 @@
--- Unified Angeli UI Library v7.0
+-- Unified Angeli UI Library v8.0
 local UserInputService = cloneref and cloneref(game:GetService('UserInputService')) or game:GetService('UserInputService')
 local TweenService = cloneref and cloneref(game:GetService('TweenService')) or game:GetService('TweenService')
 local HttpService = cloneref and cloneref(game:GetService('HttpService')) or game:GetService('HttpService')
@@ -8,6 +8,8 @@ local Players = cloneref and cloneref(game:GetService('Players')) or game:GetSer
 local CoreGui = cloneref and cloneref(game:GetService('CoreGui')) or game:GetService('CoreGui')
 local Debris = cloneref and cloneref(game:GetService('Debris')) or game:GetService('Debris')
 local GuiService = cloneref and cloneref(game:GetService('GuiService')) or game:GetService('GuiService')
+local Lighting = cloneref and cloneref(game:GetService('Lighting')) or game:GetService('Lighting')
+local Workspace = cloneref and cloneref(game:GetService('Workspace')) or game:GetService('Workspace')
 
 local mouse = Players.LocalPlayer:GetMouse()
 local LocalPlayer = Players.LocalPlayer
@@ -123,7 +125,9 @@ local Library = {
     _drag_start = nil,
     _container_position = nil,
     _flag_registry = {},
-    _elements = {}
+    _elements = {},
+    _notif_side = "Right",
+    _notif_opacity = 0.0
 }
 Library.__index = Library
 Library.Connections = Connections
@@ -135,34 +139,39 @@ function Library.new()
     return self
 end
 
+local NotificationHost = Instance.new("ScreenGui")
+NotificationHost.Name = "FallenNotifications"
+NotificationHost.ResetOnSpawn = false
+NotificationHost.IgnoreGuiInset = true
+NotificationHost.DisplayOrder = 101
+NotificationHost.Parent = CoreGui
+
 local NotificationContainer = Instance.new("Frame")
-NotificationContainer.Name = "RobloxCoreGuis"
+NotificationContainer.Name = "NotificationContainer"
 NotificationContainer.Size = UDim2.new(0, 300, 0, 0)
-NotificationContainer.AnchorPoint = Vector2.new(0, 1)
-NotificationContainer.Position = UDim2.new(0, 22, 1, -22)
 NotificationContainer.BackgroundTransparency = 1
 NotificationContainer.ClipsDescendants = false
-local NotificationRoot = CoreGui:FindFirstChild("RobloxGui")
-local NotificationHost = NotificationRoot and NotificationRoot:FindFirstChild("RobloxCoreGuis")
-
-if not NotificationHost then
-    NotificationHost = Instance.new("ScreenGui")
-    NotificationHost.Name = "FallenNotifications"
-    NotificationHost.ResetOnSpawn = false
-    NotificationHost.IgnoreGuiInset = true
-    NotificationHost.DisplayOrder = 101
-    NotificationHost.Parent = NotificationRoot or CoreGui
-end
-
 NotificationContainer.Parent = NotificationHost
 NotificationContainer.AutomaticSize = Enum.AutomaticSize.Y
 
 local UIListLayout_Notif = Instance.new("UIListLayout")
 UIListLayout_Notif.FillDirection = Enum.FillDirection.Vertical
-UIListLayout_Notif.VerticalAlignment = Enum.VerticalAlignment.Bottom
 UIListLayout_Notif.SortOrder = Enum.SortOrder.LayoutOrder
 UIListLayout_Notif.Padding = UDim.new(0, 8)
 UIListLayout_Notif.Parent = NotificationContainer
+
+local function UpdateNotificationPosition()
+    if Library._notif_side == "Left" then
+        NotificationContainer.AnchorPoint = Vector2.new(0, 0)
+        NotificationContainer.Position = UDim2.new(0, 22, 0, 22)
+        UIListLayout_Notif.VerticalAlignment = Enum.VerticalAlignment.Top
+    else
+        NotificationContainer.AnchorPoint = Vector2.new(0, 1)
+        NotificationContainer.Position = UDim2.new(0, 22, 1, -22)
+        UIListLayout_Notif.VerticalAlignment = Enum.VerticalAlignment.Bottom
+    end
+end
+UpdateNotificationPosition()
 
 function Library.SendNotification(settings)
     local Notification = Instance.new("Frame")
@@ -174,9 +183,9 @@ function Library.SendNotification(settings)
 
     local InnerFrame = Instance.new("Frame")
     InnerFrame.Size = UDim2.new(1, 0, 1, 0)
-    InnerFrame.Position = UDim2.new(-1, -320, 0, 0)
+    InnerFrame.Position = UDim2.new(Library._notif_side == "Left" and 1 or -1, -320, 0, 0)
     InnerFrame.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    InnerFrame.BackgroundTransparency = 0
+    InnerFrame.BackgroundTransparency = Library._notif_opacity
     InnerFrame.BorderSizePixel = 0
     InnerFrame.Name = "InnerFrame"
     InnerFrame.ZIndex = 1
@@ -235,7 +244,7 @@ function Library.SendNotification(settings)
         task.wait(settings.duration or 5)
 
         local tweenOut = TweenService:Create(InnerFrame, TweenInfo.new(0.32, Enum.EasingStyle.Quint, Enum.EasingDirection.In), {
-            Position = UDim2.new(-1, -320, 0, 0)
+            Position = UDim2.new(Library._notif_side == "Left" and 1 or -1, -320, 0, 0)
         })
         tweenOut:Play()
         tweenOut.Completed:Wait()
@@ -847,7 +856,7 @@ function Library:create_ui()
         UIListLayout_R.Parent = RightSection
 
         local UIPadding_R = Instance.new('UIPadding')
-        UIPadding_R.PaddingTop = UDim.new(0,1)
+        UIPadding_R.PaddingTop = UDim.new(0, 1)
         UIPadding_R.Parent = RightSection
 
         self._tab += 1
@@ -2134,7 +2143,7 @@ function Library:create_ui()
                 table.insert(Library._elements, {obj = Arrow, prop = "ImageColor3", tKey = "TextDim"})
 
                 local Options = Instance.new('ScrollingFrame')
-                Options.ScrollBarImageColor3 = Color3.fromRGB(0, 0,0)
+                Options.ScrollBarImageColor3 = Color3.fromRGB(0, 0, 0)
                 Options.Active = true
                 Options.ScrollBarImageTransparency = 1
                 Options.AutomaticCanvasSize = Enum.AutomaticSize.XY
@@ -2438,13 +2447,13 @@ function Library:create_ui()
 
     function self:SetBackground(image, transparency)
         if image and image ~= "" then
-            Background.Image = image
-            Background.Visible = true
+            self._background.Image = image
+            self._background.Visible = true
         else
-            Background.Visible = false
+            self._background.Visible = false
         end
         if transparency ~= nil then
-            Background.ImageTransparency = transparency
+            self._background.ImageTransparency = transparency
         end
         self:SaveConfig()
     end
@@ -2452,9 +2461,7 @@ function Library:create_ui()
     function self:SaveConfig()
         pcall(function()
             if writefile then
-                local ConfigData = {
-                    Theme = {}
-                }
+                local ConfigData = { Theme = {} }
                 for k, v in pairs(Theme) do
                     if typeof(v) == "Color3" then
                         ConfigData.Theme[k] = self:rgbToHex(v)
@@ -3136,6 +3143,90 @@ function Library:build_interface_tab()
         callback = function(state) end,
     })
 
+    local notif_module = InterfaceTab:create_module({
+        title       = 'Notifications',
+        flag        = 'UI_Notifications',
+        description = 'Configure notification behavior',
+        section     = 'right',
+        callback    = function(state) end,
+    })
+
+    notif_module:create_dropdown({
+        title           = 'Side',
+        flag            = 'UI_Notif_Side',
+        options         = { 'Left', 'Right' },
+        multi_dropdown  = false,
+        maximum_options = 2,
+        callback        = function(value)
+            local side = (typeof(value) == "string" and value) or value.Name
+            Library._notif_side = side
+            UpdateNotificationPosition()
+        end,
+    })
+
+    notif_module:create_slider({
+        title         = 'Opacity',
+        flag          = 'UI_Notif_Opacity',
+        minimum_value = 0,
+        maximum_value = 100,
+        value         = 0,
+        round_number  = true,
+        callback      = function(value)
+            Library._notif_opacity = value / 100
+        end,
+    })
+
+    local function FpsBooster(state)
+        if state then
+            pcall(function()
+                Lighting.GlobalShadows = false
+                Lighting.FogEnd = 1e9
+                Lighting.Brightness = 1
+                Lighting.Ambient = Color3.fromRGB(140,140,140)
+                Lighting.OutdoorAmbient = Color3.fromRGB(140,140,140)
+                Lighting.EnvironmentDiffuseScale = 0
+                Lighting.EnvironmentSpecularScale = 0
+            end)
+
+            for _,v in ipairs(Lighting:GetChildren()) do
+                if v:IsA("PostEffect") or v:IsA("Atmosphere") or v:IsA("Sky") then
+                    v:Destroy()
+                end
+            end
+
+            for _,obj in ipairs(Workspace:GetDescendants()) do
+                if obj:IsA("BasePart") then
+                    obj.CastShadow = false
+                elseif obj:IsA("Decal") or obj:IsA("Texture") then
+                    obj:Destroy()
+                elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") or obj:IsA("Explosion") or obj:IsA("Smoke") or obj:IsA("Fire") then
+                    obj:Destroy()
+                end
+            end
+
+            settings().Rendering.QualityLevel = Enum.QualityLevel.Level01
+        else
+            pcall(function()
+                Lighting.GlobalShadows = true
+                Lighting.FogEnd = 100000
+                Lighting.Brightness = 2
+                Lighting.Ambient = Color3.fromRGB(128, 128, 128)
+                Lighting.OutdoorAmbient = Color3.fromRGB(128, 128, 128)
+                Lighting.EnvironmentDiffuseScale = 1
+                Lighting.EnvironmentSpecularScale = 1
+            end)
+            settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
+        end
+    end
+
+    notif_module:create_checkbox({
+        title    = 'FPS Booster',
+        flag     = 'UI_FPS_Booster',
+        callback = function(state) 
+            FpsBooster(state)
+        end,
+    })
+
     local FpsGui = Instance.new("ScreenGui")
     FpsGui.Name = "FpsPingDisplay"
     FpsGui.ResetOnSpawn = false
@@ -3151,6 +3242,7 @@ function Library:build_interface_tab()
     FpsFrame.Parent = FpsGui
     FpsFrame.Active = true
     FpsFrame.Draggable = true
+    FpsGui.Enabled = false
 
     local lastTime = tick()
     local frameCount = 0
@@ -3176,11 +3268,229 @@ function Library:build_interface_tab()
         end
     end)
 
-    settings_module:create_checkbox({
-        title    = 'Show FPS & Ping',
-        flag     = 'UI_Show_Fps',
+    notif_module:create_checkbox({
+        title    = 'Show FPS & Ping (Text)',
+        flag     = 'UI_Show_Fps_Text',
         callback = function(state)
             FpsGui.Enabled = state
+            if state then
+                PingGraphGui.Enabled = false
+                self._flag_registry['UI_Show_Fps_Graph'](false)
+            end
+        end,
+    })
+
+    -- Ping Graph Overlay
+    local PingGraphGui = Instance.new("ScreenGui")
+    PingGraphGui.Name = "PingGraph"
+    PingGraphGui.ResetOnSpawn = false
+    PingGraphGui.IgnoreGuiInset = true
+    PingGraphGui.Parent = CoreGui
+    PingGraphGui.Enabled = false
+
+    local GRAPH_WIDTH = 200
+    local GRAPH_HEIGHT = 35
+    local MAX_POINTS = 60
+    local UPDATE_INTERVAL = 0.2
+    local SMOOTH_SAMPLES = 3
+
+    local PingContainer = Instance.new("Frame")
+    PingContainer.Size = UDim2.new(0, GRAPH_WIDTH + 12, 0, GRAPH_HEIGHT + 34)
+    PingContainer.Position = UDim2.new(0, 15, 0, 15)
+    PingContainer.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    PingContainer.BackgroundTransparency = 0.15
+    PingContainer.BorderSizePixel = 0
+    PingContainer.Active = true
+    PingContainer.Draggable = true
+    PingContainer.ClipsDescendants = true
+    PingContainer.Parent = PingGraphGui
+
+    local PingCorner = Instance.new("UICorner")
+    PingCorner.CornerRadius = UDim.new(0, 6)
+    PingCorner.Parent = PingContainer
+
+    local TopBar = Instance.new("Frame")
+    TopBar.Size = UDim2.new(1, 0, 0, 20)
+    TopBar.Position = UDim2.new(0, 0, 0, 0)
+    TopBar.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+    TopBar.BackgroundTransparency = 0.1
+    TopBar.BorderSizePixel = 0
+    TopBar.Parent = PingContainer
+
+    local TopBarCorner = Instance.new("UICorner")
+    TopBarCorner.CornerRadius = UDim.new(0, 6)
+    TopBarCorner.Parent = TopBar
+
+    local PingTitle = Instance.new("TextLabel")
+    PingTitle.Size = UDim2.new(1, 0, 0, 20)
+    PingTitle.Position = UDim2.new(0, 0, 0, 0)
+    PingTitle.BackgroundTransparency = 1
+    PingTitle.FontFace = Font.new("rbxasset://fonts/families/SFPro.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
+    PingTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
+    PingTitle.TextSize = 10
+    PingTitle.TextXAlignment = Enum.TextXAlignment.Center
+    PingTitle.TextYAlignment = Enum.TextYAlignment.Center
+    PingTitle.Text = "PING: --  |  AVG: --  |  MAX: --"
+    PingTitle.TextStrokeTransparency = 0.4
+    PingTitle.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
+    PingTitle.Parent = PingContainer
+
+    local Canvas = Instance.new("Frame")
+    Canvas.Size = UDim2.new(0, GRAPH_WIDTH, 0, GRAPH_HEIGHT)
+    Canvas.Position = UDim2.new(0, 4, 0, 22)
+    Canvas.BackgroundTransparency = 1
+    Canvas.BorderSizePixel = 0
+    Canvas.ClipsDescendants = true
+    Canvas.Parent = PingContainer
+
+    for i = 0, 2 do
+        local line = Instance.new("Frame")
+        line.Size = UDim2.new(1, 0, 0, 0.5)
+        line.Position = UDim2.new(0, 0, 0, i * (GRAPH_HEIGHT / 2))
+        line.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+        line.BackgroundTransparency = 0.95
+        line.BorderSizePixel = 0
+        line.Parent = Canvas
+    end
+
+    local GraphLines = {}
+    for i = 1, MAX_POINTS - 1 do
+        local line = Instance.new("Frame")
+        line.Size = UDim2.new(0, 4, 0, 2)
+        line.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
+        line.BorderSizePixel = 0
+        line.Visible = false
+        line.Parent = Canvas
+        table.insert(GraphLines, line)
+    end
+
+    local Stats = { min = math.huge, max = 0, sum = 0, count = 0, avg = 0, current = 0 }
+    local pingBuffer = {}
+    local lastUpdate = 0
+    local maxPingScale = 80
+    local PingHistory = {}
+    local RawPingCache = 0
+    local PingCacheTime = 0
+
+    local function GetRawPing()
+        local now = tick()
+        if now - PingCacheTime < 0.05 then
+            return RawPingCache
+        end
+        local ok, val = pcall(function()
+            return game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()
+        end)
+        if ok and type(val) == "number" and val > 0 then
+            RawPingCache = val
+            PingCacheTime = now
+            return val
+        end
+        return RawPingCache
+    end
+
+    local function GetSmoothPing()
+        local raw = GetRawPing()
+        table.insert(PingHistory, raw)
+        if #PingHistory > SMOOTH_SAMPLES then
+            table.remove(PingHistory, 1)
+        end
+        local sum = 0
+        for _, v in ipairs(PingHistory) do
+            sum = sum + v
+        end
+        return #PingHistory > 0 and sum / #PingHistory or raw
+    end
+
+    task.spawn(function()
+        while true do
+            GetSmoothPing()
+            task.wait(1)
+        end
+    end)
+
+    local function UpdateGraph()
+        local currentPing = GetSmoothPing()
+        Stats.current = currentPing
+        
+        if currentPing > 0 then
+            if currentPing < Stats.min then Stats.min = currentPing end
+            if currentPing > Stats.max then Stats.max = currentPing end
+            Stats.sum = Stats.sum + currentPing
+            Stats.count = Stats.count + 1
+            Stats.avg = Stats.count > 0 and Stats.sum / Stats.count or 0
+        end
+        
+        PingTitle.Text = string.format("PING: %d  |  AVG: %.0f  |  MAX: %.0f", math.round(currentPing), Stats.avg, Stats.max)
+        
+        table.insert(pingBuffer, currentPing)
+        if #pingBuffer > MAX_POINTS then
+            table.remove(pingBuffer, 1)
+        end
+        
+        local localMax = 20
+        for _, v in ipairs(pingBuffer) do
+            if v > localMax then localMax = v end
+        end
+        localMax = localMax * 1.15
+        localMax = math.max(localMax, 30)
+        maxPingScale = maxPingScale + (localMax - maxPingScale) * 0.1
+        maxPingScale = math.max(maxPingScale, 25)
+        
+        local count = #pingBuffer
+        
+        for i = 1, MAX_POINTS - 1 do
+            local line = GraphLines[i]
+            if i < count then
+                local ping1 = pingBuffer[i] or 0
+                local ping2 = pingBuffer[i + 1] or 0
+                local norm1 = math.clamp(ping1 / maxPingScale, 0, 1)
+                local norm2 = math.clamp(ping2 / maxPingScale, 0, 1)
+                local x1 = (i - 1) * (GRAPH_WIDTH / MAX_POINTS)
+                local x2 = i * (GRAPH_WIDTH / MAX_POINTS)
+                local y1 = GRAPH_HEIGHT - (norm1 * (GRAPH_HEIGHT - 2)) - 1
+                local y2 = GRAPH_HEIGHT - (norm2 * (GRAPH_HEIGHT - 2)) - 1
+                local angle = math.atan2(y2 - y1, x2 - x1)
+                local length = math.sqrt((x2 - x1)^2 + (y2 - y1)^2)
+                local avgPing = (ping1 + ping2) / 2
+                local color
+                if avgPing < 40 then
+                    color = Color3.fromRGB(0, 255, 80)
+                elseif avgPing < 70 then
+                    color = Color3.fromRGB(255, 255, 0)
+                elseif avgPing < 120 then
+                    color = Color3.fromRGB(255, 180, 0)
+                else
+                    color = Color3.fromRGB(255, 60, 60)
+                end
+                line.Size = UDim2.new(0, length, 0, 2)
+                line.Position = UDim2.new(0, x1, 0, y1 - 1)
+                line.Rotation = math.deg(angle)
+                line.BackgroundColor3 = color
+                line.Visible = true
+            else
+                line.Visible = false
+            end
+        end
+    end
+
+    RunService.RenderStepped:Connect(function(delta)
+        if not PingGraphGui.Enabled then return end
+        lastUpdate = lastUpdate + delta
+        if lastUpdate >= UPDATE_INTERVAL then
+            lastUpdate = 0
+            UpdateGraph()
+        end
+    end)
+
+    notif_module:create_checkbox({
+        title    = 'Show FPS & Ping (Graph)',
+        flag     = 'UI_Show_Fps_Graph',
+        callback = function(state)
+            PingGraphGui.Enabled = state
+            if state then
+                FpsGui.Enabled = false
+                self._flag_registry['UI_Show_Fps_Text'](false)
+            end
         end,
     })
 end
