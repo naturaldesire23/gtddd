@@ -1,5 +1,5 @@
 --[[
-  Angeli UI Library v4.4 - Patched Helpers & Stats
+  Angeli UI Library v4.5 - ZIndex Fix & Ping Patch
 ]]
 
 local AngeliUI = {}
@@ -9,13 +9,7 @@ local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
 local Stats = game:GetService("Stats")
-local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
-
-local function GetFont(name, weight)
-    local weight = weight or Enum.FontWeight.Regular
-    return Font.new("rbxasset://fonts/families/" .. name .. ".json", weight, Enum.FontStyle.Normal)
-end
 
 -- ─── CONFIG STORAGE ───
 local ConfigData = {
@@ -258,14 +252,13 @@ function AngeliUI:CreateWindow(opts)
     end
     
     -- ─── MAIN UI ───
-    local Main = New("CanvasGroup", {
+    local Main = New("Frame", {
         Name = "Main",
         AnchorPoint = Vector2.new(0.5, 0.5),
         Position = UDim2.fromScale(0.5, 0.5),
         Size = size,
         BackgroundColor3 = Theme.Background,
         BorderSizePixel = 0,
-        GroupTransparency = 1,
         Parent = Gui,
     })
     Corner(Main, 12)
@@ -301,6 +294,7 @@ function AngeliUI:CreateWindow(opts)
         Name = "Header",
         Size = UDim2.new(1, 0, 0, 46),
         BackgroundTransparency = 1,
+        ZIndex = 2,
         Parent = Main,
     })
     
@@ -314,6 +308,7 @@ function AngeliUI:CreateWindow(opts)
         TextSize = 16,
         TextColor3 = Theme.Text,
         TextXAlignment = Enum.TextXAlignment.Left,
+        ZIndex = 3,
         Parent = Header,
     })
     
@@ -378,6 +373,7 @@ function AngeliUI:CreateWindow(opts)
         CanvasSize = UDim2.new(0, 0, 0, 0),
         ScrollingDirection = Enum.ScrollingDirection.Y,
         BorderSizePixel = 0,
+        ZIndex = 2,
         Parent = Main,
     })
     Pad(Sidebar, 10, 10, 10, 10)
@@ -393,6 +389,7 @@ function AngeliUI:CreateWindow(opts)
         Size = UDim2.new(0, 160, 1, -47),
         BackgroundTransparency = 1,
         ClipsDescendants = true,
+        ZIndex = 2,
         Parent = Main,
     })
     
@@ -414,6 +411,7 @@ function AngeliUI:CreateWindow(opts)
         Position = UDim2.new(0, 161, 0, 47),
         Size = UDim2.new(1, -161, 1, -47),
         BackgroundTransparency = 1,
+        ZIndex = 2,
         Parent = Main,
     })
     Pad(Content, 12, 12, 12, 12)
@@ -543,16 +541,16 @@ function AngeliUI:CreateWindow(opts)
         uiVisible = visible
         if instant then
             Main.Visible = visible
-            Main.GroupTransparency = visible and 0 or 1
+            Main.BackgroundTransparency = visible and 0 or 1
             uiScale.Scale = visible and 1 or 0.96
             return
         end
         if visible then
             Main.Visible = true
-            Tween(Main, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { GroupTransparency = 0 })
+            Tween(Main, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 0 })
             Tween(uiScale, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Scale = 1 })
         else
-            Tween(Main, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { GroupTransparency = 1 })
+            Tween(Main, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 1 })
             Tween(uiScale, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Scale = 0.96 })
             task.delay(0.24, function()
                 if not uiVisible then Main.Visible = false end
@@ -563,12 +561,12 @@ function AngeliUI:CreateWindow(opts)
     -- ─── NOTIFICATION ───
     function Window:Notify(n)
         n = n or {}
-        local toast = New("CanvasGroup", {
+        local toast = New("Frame", {
             Size = UDim2.new(0, 250, 0, 0),
             Position = UDim2.new(0, 24, 0, 0),
             AutomaticSize = Enum.AutomaticSize.Y,
             BackgroundColor3 = Theme.Group,
-            GroupTransparency = 1,
+            BackgroundTransparency = 1,
             BorderSizePixel = 0,
             Parent = NotifyHolder,
         })
@@ -590,10 +588,10 @@ function AngeliUI:CreateWindow(opts)
             TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left,
             TextYAlignment = Enum.TextYAlignment.Top, Parent = toast,
         })
-        Tween(toast, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { GroupTransparency = 0, Position = UDim2.new(0, 0, 0, 0) })
+        Tween(toast, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 0, Position = UDim2.new(0, 0, 0, 0) })
         task.delay(n.Duration or 3, function()
             if toast and toast.Parent then
-                Tween(toast, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { GroupTransparency = 1, Position = UDim2.new(0, 24, 0, 0) })
+                Tween(toast, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 1, Position = UDim2.new(0, 24, 0, 0) })
                 task.delay(0.26, function()
                     if toast and toast.Parent then toast:Destroy() end
                 end)
@@ -1073,10 +1071,10 @@ function AngeliUI:CreateWindow(opts)
                 if t.Page ~= (previous and previous.Page) then
                     t.Page.Visible = true
                     t.Page.Position = UDim2.new(0, 0, 0, 12)
-                    t.Page.GroupTransparency = 1
+                    t.Page.BackgroundTransparency = 1
                     Tween(t.Page, TweenInfo.new(0.24, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
                         Position = UDim2.new(0, 0, 0, 0),
-                        GroupTransparency = 0,
+                        BackgroundTransparency = 0,
                     })
                 else
                     t.Page.Visible = true
@@ -1147,11 +1145,10 @@ function AngeliUI:CreateWindow(opts)
                 Tween(button, TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundTransparency = 1 })
             end
         end)
-        local page = New("CanvasGroup", {
+        local page = New("Frame", {
             Name = "Page_" .. (tabOpts.Name or "Tab"),
             Size = UDim2.new(1, 0, 1, 0),
             BackgroundTransparency = 1,
-            GroupTransparency = 0,
             Visible = false,
             BorderSizePixel = 0,
             Parent = Content,
