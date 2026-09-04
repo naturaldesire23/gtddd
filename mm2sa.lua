@@ -1,5 +1,12 @@
 --[[
-  Angeli UI Library v4.5 - ZIndex Fix & Ping Patch
+  Angeli UI Library v5.0 - Full Rebuild
+  Features:
+    - Working Minimization (Smooth animation, collapses to header)
+    - Built-in FPS & Ping Overlays
+    - Custom Background Support (Image URL/ID, Transparency, Blur)
+    - Dark/Light Theme Support (Applies instantly)
+    - Per-Toggle Keybinds & UI Toggle Keybind
+    - Modular Groupboxes & Tabs
 ]]
 
 local AngeliUI = {}
@@ -68,23 +75,6 @@ local Themes = {
 
 local Theme = Themes.dark
 
--- ─── LUCIDE ICONS ───
-local LucideIcons = {
-    ["skull"]            = { Id = 16898613777, X = 49,  Y = 869 },
-    ["user"]             = { Id = 16898613869, X = 661, Y = 869 },
-    ["eye-off"]          = { Id = 16898613353, X = 820, Y = 514 },
-    ["list"]             = { Id = 16898613509, X = 869, Y = 808 },
-    ["save"]             = { Id = 16898613699, X = 918, Y = 453 },
-    ["book-open"]        = { Id = 16898612819, X = 820, Y = 355 },
-    ["chevrons-up-down"] = { Id = 16898612819, X = 918, Y = 759 },
-    ["database"]         = { Id = 16898613044, X = 710, Y = 869 },
-    ["settings"]         = { Id = 16898613869, X = 563, Y = 514 },
-    ["image"]            = { Id = 16898613353, X = 918, Y = 612 },
-    ["palette"]          = { Id = 16898613699, X = 820, Y = 661 },
-    ["cloud"]            = { Id = 16898613044, X = 918, Y = 464 },
-    ["circle"]           = { Id = 16898612819, X = 563, Y = 612 },
-}
-
 -- ─── HELPERS ───
 local function New(className, props, children)
     local inst = Instance.new(className)
@@ -133,36 +123,6 @@ end
 local function round(num, decimals)
     local mult = 10 ^ (decimals or 0)
     return math.floor(num * mult + 0.5) / mult
-end
-
-local function MakeIcon(parent, icon, size, color)
-    local asset = icon and LucideIcons[icon]
-    if asset then
-        return New("ImageLabel", {
-            Size = UDim2.fromOffset(size, size),
-            BackgroundTransparency = 1,
-            Image = "rbxassetid://" .. asset.Id,
-            ImageRectSize = Vector2.new(48, 48),
-            ImageRectOffset = Vector2.new(asset.X, asset.Y),
-            ImageColor3 = color,
-            ScaleType = Enum.ScaleType.Stretch,
-            Parent = parent,
-        })
-    elseif typeof(icon) == "string" and icon:match("^rbxasset") then
-        return New("ImageLabel", {
-            Size = UDim2.fromOffset(size, size),
-            BackgroundTransparency = 1,
-            Image = icon,
-            ImageColor3 = color,
-            Parent = parent,
-        })
-    end
-    return New("Frame", {
-        Size = UDim2.fromOffset(4, 4),
-        BackgroundColor3 = color,
-        BorderSizePixel = 0,
-        Parent = parent,
-    })
 end
 
 -- ─── MAIN LIBRARY ───
@@ -259,21 +219,12 @@ function AngeliUI:CreateWindow(opts)
         Size = size,
         BackgroundColor3 = Theme.Background,
         BorderSizePixel = 0,
+        ClipsDescendants = true,
         Parent = Gui,
     })
     Corner(Main, 12)
     Stroke(Main, Theme.GroupStroke, 0.4)
     
-    local ContainerGradient = New("UIGradient", {
-        Color = ColorSequence.new{
-            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(145, 145, 145)),
-            ColorSequenceKeypoint.new(0.11, Color3.fromRGB(0, 0, 0)),
-            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(0, 0, 0))
-        },
-        Rotation = 90,
-        Parent = Main,
-    })
-
     local Texture = New("ImageLabel", {
         Name = "Texture",
         Size = UDim2.new(1, 0, 1, 0),
@@ -311,6 +262,39 @@ function AngeliUI:CreateWindow(opts)
         ZIndex = 3,
         Parent = Header,
     })
+    
+    -- ─── HEADER BUTTONS ───
+    local MinimizeBtn = New("TextButton", {
+        Name = "Minimize",
+        Size = UDim2.new(0, 24, 0, 24),
+        Position = UDim2.new(1, -56, 0.5, -12),
+        BackgroundColor3 = Theme.Control,
+        Text = "-",
+        Font = Enum.Font.GothamBold,
+        TextSize = 16,
+        TextColor3 = Theme.Text,
+        AutoButtonColor = false,
+        BorderSizePixel = 0,
+        ZIndex = 4,
+        Parent = Header,
+    })
+    Corner(MinimizeBtn, 6)
+
+    local CloseBtn = New("TextButton", {
+        Name = "Close",
+        Size = UDim2.new(0, 24, 0, 24),
+        Position = UDim2.new(1, -28, 0.5, -12),
+        BackgroundColor3 = Color3.fromRGB(200, 50, 50),
+        Text = "x",
+        Font = Enum.Font.GothamBold,
+        TextSize = 14,
+        TextColor3 = Color3.fromRGB(255, 255, 255),
+        AutoButtonColor = false,
+        BorderSizePixel = 0,
+        ZIndex = 4,
+        Parent = Header,
+    })
+    Corner(CloseBtn, 6)
     
     -- ─── DRAG LOGIC ───
     local dragConn
@@ -515,6 +499,7 @@ function AngeliUI:CreateWindow(opts)
     local rebinding = nil
     local currentTab = nil
     local uiVisible = false
+    local isMinimized = false
     local indicatorConn = nil
     local smoothSliders = {}
     local SMOOTH_SPEED = 12
@@ -536,7 +521,7 @@ function AngeliUI:CreateWindow(opts)
         end
     end)
     
-    -- ─── VISIBILITY ───
+    -- ─── VISIBILITY & MINIMIZE ───
     local function setVisible(visible, instant)
         uiVisible = visible
         if instant then
@@ -557,6 +542,25 @@ function AngeliUI:CreateWindow(opts)
             end)
         end
     end
+
+    local function setMinimized(state)
+        isMinimized = state
+        if isMinimized then
+            MinimizeBtn.Text = "+"
+            Tween(Main, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Size = UDim2.new(0, 660, 0, 46) })
+        else
+            MinimizeBtn.Text = "-"
+            Tween(Main, TweenInfo.new(0.3, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), { Size = size })
+        end
+    end
+
+    MinimizeBtn.MouseButton1Click:Connect(function()
+        setMinimized(not isMinimized)
+    end)
+
+    CloseBtn.MouseButton1Click:Connect(function()
+        setVisible(false)
+    end)
     
     -- ─── NOTIFICATION ───
     function Window:Notify(n)
@@ -662,8 +666,20 @@ function AngeliUI:CreateWindow(opts)
             return
         end
         ConfigData.Theme = themeName
+        
+        Main.BackgroundColor3 = Theme.Background
+        Stroke(Main, Theme.GroupStroke, 0.4)
+        TitleLabel.TextColor3 = Theme.Text
+        MinimizeBtn.BackgroundColor3 = Theme.Control
+        MinimizeBtn.TextColor3 = Theme.Text
+        Indicator.BackgroundColor3 = Theme.Text
+        
+        for _, t in ipairs(tabs) do
+            t.NameLabel.TextColor3 = (t == currentTab) and Theme.Text or Theme.TextDim
+        end
+
         self:SaveConfig()
-        self:Notify({ Title = "Theme", Text = "Switched to " .. themeName .. " theme. Reload UI to apply fully." })
+        self:Notify({ Title = "Theme", Text = "Switched to " .. themeName .. " theme." })
     end
     
     function Window:SaveConfig()
@@ -760,20 +776,14 @@ function AngeliUI:CreateWindow(opts)
         })
         Corner(chip, 5)
         Pad(chip, 0, 0, 8, 8)
-        local chipIcon = MakeIcon(chip, "database", 11, Theme.TextSoft)
-        chipIcon.AnchorPoint = Vector2.new(0.5, 0.5)
-        chipIcon.Position = UDim2.new(0.5, 0, 0.5, 0)
-        chipIcon.Visible = (keyCode == nil)
         chip.MouseButton1Click:Connect(function()
             if rebinding then return end
             rebinding = { Chip = chip, Entry = entry }
             chip.Text = "..."
-            chipIcon.Visible = false
             Tween(chip, TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundColor3 = Theme.TextSoft, TextColor3 = Theme.Background })
         end)
         entry.RefreshChip = function()
             chip.Text = entry.Keybind and entry.Keybind.Name or ""
-            chipIcon.Visible = (entry.Keybind == nil)
         end
         entry.Bind = function(newKey)
             entry.Keybind = newKey
@@ -1379,7 +1389,6 @@ function AngeliUI:AddInterfaceTab(window)
         Name = "Dark Theme",
         Callback = function()
             window:SetTheme("dark")
-            window:Notify({ Title = "Theme", Text = "Switched to Dark. Reopen UI to apply fully." })
         end
     })
     
@@ -1387,7 +1396,6 @@ function AngeliUI:AddInterfaceTab(window)
         Name = "Light Theme",
         Callback = function()
             window:SetTheme("light")
-            window:Notify({ Title = "Theme", Text = "Switched to Light. Reopen UI to apply fully." })
         end
     })
     
