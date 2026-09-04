@@ -1,5 +1,5 @@
 --[[
-  Angeli UI Library v4.3 - Patched Font, Background, Overlays
+  Angeli UI Library v4.4 - Patched Helpers & Stats
 ]]
 
 local AngeliUI = {}
@@ -74,6 +74,23 @@ local Themes = {
 
 local Theme = Themes.dark
 
+-- ─── LUCIDE ICONS ───
+local LucideIcons = {
+    ["skull"]            = { Id = 16898613777, X = 49,  Y = 869 },
+    ["user"]             = { Id = 16898613869, X = 661, Y = 869 },
+    ["eye-off"]          = { Id = 16898613353, X = 820, Y = 514 },
+    ["list"]             = { Id = 16898613509, X = 869, Y = 808 },
+    ["save"]             = { Id = 16898613699, X = 918, Y = 453 },
+    ["book-open"]        = { Id = 16898612819, X = 820, Y = 355 },
+    ["chevrons-up-down"] = { Id = 16898612819, X = 918, Y = 759 },
+    ["database"]         = { Id = 16898613044, X = 710, Y = 869 },
+    ["settings"]         = { Id = 16898613869, X = 563, Y = 514 },
+    ["image"]            = { Id = 16898613353, X = 918, Y = 612 },
+    ["palette"]          = { Id = 16898613699, X = 820, Y = 661 },
+    ["cloud"]            = { Id = 16898613044, X = 918, Y = 464 },
+    ["circle"]           = { Id = 16898612819, X = 563, Y = 612 },
+}
+
 -- ─── HELPERS ───
 local function New(className, props, children)
     local inst = Instance.new(className)
@@ -122,6 +139,36 @@ end
 local function round(num, decimals)
     local mult = 10 ^ (decimals or 0)
     return math.floor(num * mult + 0.5) / mult
+end
+
+local function MakeIcon(parent, icon, size, color)
+    local asset = icon and LucideIcons[icon]
+    if asset then
+        return New("ImageLabel", {
+            Size = UDim2.fromOffset(size, size),
+            BackgroundTransparency = 1,
+            Image = "rbxassetid://" .. asset.Id,
+            ImageRectSize = Vector2.new(48, 48),
+            ImageRectOffset = Vector2.new(asset.X, asset.Y),
+            ImageColor3 = color,
+            ScaleType = Enum.ScaleType.Stretch,
+            Parent = parent,
+        })
+    elseif typeof(icon) == "string" and icon:match("^rbxasset") then
+        return New("ImageLabel", {
+            Size = UDim2.fromOffset(size, size),
+            BackgroundTransparency = 1,
+            Image = icon,
+            ImageColor3 = color,
+            Parent = parent,
+        })
+    end
+    return New("Frame", {
+        Size = UDim2.fromOffset(4, 4),
+        BackgroundColor3 = color,
+        BorderSizePixel = 0,
+        Parent = parent,
+    })
 end
 
 -- ─── MAIN LIBRARY ───
@@ -440,9 +487,14 @@ function AngeliUI:CreateWindow(opts)
 
     task.spawn(function()
         while task.wait(1) do
-            local ping = Stats and Stats.Network.ServerStatsItem and Stats.Network.ServerStatsItem.DataValue
-            if ping then
-                PingLabel.Text = "Ping: " .. math.round(ping) .. "ms"
+            local pingVal = Stats:FindFirstChild("Network")
+            if pingVal then
+                local serverStats = pingVal:FindFirstChild("ServerStatsItem")
+                if serverStats and serverStats:FindFirstChild("Value") then
+                    PingLabel.Text = "Ping: " .. math.round(serverStats.Value) .. "ms"
+                else
+                    PingLabel.Text = "Ping: N/A"
+                end
             else
                 PingLabel.Text = "Ping: N/A"
             end
