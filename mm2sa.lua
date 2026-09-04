@@ -1,32 +1,14 @@
 --[[
-  MCUILib — Minecraft-style UI Library for Roblox
+  MCUILib v3 — Minecraft-style UI Library for Roblox
   Author: Axiom
-  Theme:  Light (Minecraft white glass — matches the reference screenshot)
   
-  Assets (ImageLabel/ImageButton ids):
-    Activity:     137527339160230
-    AlertTriangle:112102474509324
-    Misc:          92373371786861
-    Atom:         119051552929078
-    Ban:          109685306480139
-    Battery:      102599812606554
-    Bug:           75649814233484
-    Eye:          127234874352422
-    ArrowUp:      104406213770080
-    ArrowDown:    134161790366779
-
-  Usage:
-    local MC = require(path.to.MCUILib)
-    local win = MC.Window("Combat", MC.Icons.Eye)
-    local section = win:Section("⚔ FEATURES")
-    section:Toggle("Kill Aura", MC.Icons.Activity, true, function(val) print(val) end)
-    section:Slider("Range", 1, 6, 3.8, 0.1, function(val) print(val) end)
-    section:Keybind("Toggle", Enum.KeyCode.F4, function(key) print(key) end)
-    section:Input("Tag", "enter text...", function(txt) print(txt) end)
-    section:SegmentedButton({"Single","Multi","Legit"}, 1, function(idx, lbl) print(lbl) end)
-    section:Button("Save Config", "accent", function() print("saved") end)
-    section:ColorPicker("ESP Color", Color3.fromHex("#55CC44"), function(c) print(c) end)
-    win:Show()
+  Features:
+    - Tabbed window system (MC Mod style)
+    - Animated minimization
+    - Custom background image support (Pinterest/URL)
+    - Gradient UI support with texture noise overlay
+    - Runtime theme customization
+    - Bindable keybinds (returns API with OnChanged event)
 ]]
 
 local Players = game:GetService("Players")
@@ -41,27 +23,29 @@ local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 -- THEME
 -- ──────────────────────────────────────────────
 local Theme = {
-  BG          = Color3.fromHex("#f5f5f5"),
-  Panel       = Color3.fromHex("#ffffff"),
-  Row         = Color3.fromHex("#f9f9f9"),
-  RowHover    = Color3.fromHex("#f0f0f0"),
-  Border      = Color3.fromHex("#c8c8c8"),
-  BorderDark  = Color3.fromHex("#e8e8e8"),
-  Text        = Color3.fromHex("#1a1a1a"),
-  TextMuted   = Color3.fromHex("#666666"),
-  Green       = Color3.fromHex("#3aa82b"),
-  GreenDark   = Color3.fromHex("#d4f0d0"),
-  Red         = Color3.fromHex("#d63030"),
-  Accent      = Color3.fromHex("#2563eb"),
-  AccentDark  = Color3.fromHex("#dbeafe"),
-  SliderTrack = Color3.fromHex("#e8e8e8"),
-  SliderThumb = Color3.fromHex("#c8c8c8"),
-  InputBG     = Color3.fromHex("#ffffff"),
-  TitleBG     = Color3.fromHex("#f0f0f0"),
+  BG          = Color3.fromHex("#1a1a1a"),
+  Panel       = Color3.fromHex("#2a2a2a"),
+  Row         = Color3.fromHex("#1e1e1e"),
+  RowHover    = Color3.fromHex("#303030"),
+  Border      = Color3.fromHex("#555555"),
+  BorderDark  = Color3.fromHex("#111111"),
+  Text        = Color3.fromHex("#f0f0f0"),
+  TextMuted   = Color3.fromHex("#aaaaaa"),
+  Green       = Color3.fromHex("#55cc44"),
+  GreenDark   = Color3.fromHex("#2a7020"),
+  Red         = Color3.fromHex("#cc3333"),
+  Accent      = Color3.fromHex("#4a90d9"),
+  AccentDark  = Color3.fromHex("#2060a0"),
+  SliderTrack = Color3.fromHex("#111111"),
+  SliderThumb = Color3.fromHex("#888888"),
+  InputBG     = Color3.fromHex("#111111"),
+  TitleBG     = Color3.fromHex("#222222"),
+  TabBG       = Color3.fromHex("#1a1a1a"),
+  TabActive   = Color3.fromHex("#2a2a2a"),
 }
 
 -- ──────────────────────────────────────────────
--- ICON ASSET IDs  (use as ImageLabel.Image)
+-- ICON ASSET IDs
 -- ──────────────────────────────────────────────
 local Icons = {
   Activity      = "rbxassetid://137527339160230",
@@ -89,16 +73,35 @@ local function make(class, props, parent)
 end
 
 local function mcBorder(frame, light, dark)
-  local stroke = make("UIStroke", {
+  return make("UIStroke", {
     ApplyStrokeMode = Enum.ApplyStrokeMode.Border,
     Color = light or Theme.Border,
     Thickness = 2,
   }, frame)
-  return stroke
 end
 
 local function tween(inst, goal, t)
   TweenService:Create(inst, TweenInfo.new(t or 0.08, Enum.EasingStyle.Linear), goal):Play()
+end
+
+local function applyGradientAndTexture(parent)
+  local grad = make("UIGradient", {
+    Color = ColorSequence.new{
+      ColorSequenceKeypoint.new(0.00, Color3.fromRGB(145, 145, 145)),
+      ColorSequenceKeypoint.new(0.11, Color3.fromRGB(0, 0, 0)),
+      ColorSequenceKeypoint.new(1.00, Color3.fromRGB(0, 0, 0)),
+    },
+  }, parent)
+  
+  local tex = make("ImageLabel", {
+    Size = UDim2.new(1, 0, 1, 0),
+    BackgroundTransparency = 1,
+    Image = "rbxassetid://9968344227",
+    ImageTransparency = 0.88,
+    ScaleType = Enum.ScaleType.Tile,
+    ZIndex = 0,
+  }, parent)
+  return grad, tex
 end
 
 -- ──────────────────────────────────────────────
@@ -107,7 +110,7 @@ end
 local function createToast(container)
   local toast = make("Frame", {
     Size = UDim2.new(1, 0, 0, 28),
-    BackgroundColor3 = Color3.fromHex("#e8f8e5"),
+    BackgroundColor3 = Color3.fromHex("#1a2a1a"),
     BorderSizePixel = 0,
     Visible = false,
     LayoutOrder = -999,
@@ -123,7 +126,7 @@ local function createToast(container)
     Position = UDim2.new(0, 8, 0, 0),
     BackgroundTransparency = 1,
     Text = "",
-    TextColor3 = Color3.fromHex("#2a7d1e"),
+    TextColor3 = Theme.Green,
     Font = Enum.Font.Code,
     TextSize = 15,
     TextXAlignment = Enum.TextXAlignment.Left,
@@ -158,7 +161,7 @@ local function createToggle(parent, label, iconId, default, callback)
   make("UIPadding", { PaddingLeft = UDim.new(0,8), PaddingRight = UDim.new(0,8) }, row)
 
   if iconId then
-    local ic = make("ImageLabel", {
+    make("ImageLabel", {
       Size = UDim2.new(0, 18, 0, 18),
       Position = UDim2.new(0, 0, 0.5, -9),
       BackgroundTransparency = 1,
@@ -167,7 +170,7 @@ local function createToggle(parent, label, iconId, default, callback)
     }, row)
   end
 
-  local lblFrame = make("TextLabel", {
+  make("TextLabel", {
     Size = UDim2.new(1, -(iconId and 60 or 50), 1, 0),
     Position = UDim2.new(0, iconId and 26 or 0, 0, 0),
     BackgroundTransparency = 1,
@@ -182,7 +185,7 @@ local function createToggle(parent, label, iconId, default, callback)
   local pill = make("Frame", {
     Size = UDim2.new(0, 42, 0, 20),
     Position = UDim2.new(1, -42, 0.5, -10),
-    BackgroundColor3 = state and Theme.GreenDark or Color3.fromHex("#dddddd"),
+    BackgroundColor3 = state and Theme.GreenDark or Color3.fromHex("#333333"),
     BorderSizePixel = 0,
   }, row)
   mcBorder(pill)
@@ -190,16 +193,16 @@ local function createToggle(parent, label, iconId, default, callback)
   local thumb = make("Frame", {
     Size = UDim2.new(0, 12, 0, 12),
     Position = state and UDim2.new(0, 26, 0, 2) or UDim2.new(0, 2, 0, 2),
-    BackgroundColor3 = state and Theme.Green or Color3.fromHex("#aaaaaa"),
+    BackgroundColor3 = state and Theme.Green or Color3.fromHex("#888888"),
     BorderSizePixel = 0,
   }, pill)
-  mcBorder(thumb, Color3.fromHex("#dddddd"))
+  mcBorder(thumb, Color3.fromHex("#333333"))
 
   local function updateVisual()
-    tween(pill, { BackgroundColor3 = state and Theme.GreenDark or Color3.fromHex("#dddddd") })
+    tween(pill, { BackgroundColor3 = state and Theme.GreenDark or Color3.fromHex("#333333") })
     tween(thumb, {
       Position = state and UDim2.new(0, 26, 0, 2) or UDim2.new(0, 2, 0, 2),
-      BackgroundColor3 = state and Theme.Green or Color3.fromHex("#aaaaaa"),
+      BackgroundColor3 = state and Theme.Green or Color3.fromHex("#888888"),
     })
   end
 
@@ -227,6 +230,7 @@ local function createToggle(parent, label, iconId, default, callback)
   function api:Set(val)
     state = val
     updateVisual()
+    if callback then callback(state) end
   end
   function api:Get() return state end
   return api
@@ -350,6 +354,7 @@ local function createSlider(parent, label, min, max, default, step, callback)
     fill.Size = UDim2.new(pct, 0, 1, 0)
     thumbFrame.Position = UDim2.new(pct, -8, 0.5, -8)
     valLbl.Text = (step < 1) and string.format("%.1f", value) or tostring(math.round(value))
+    if callback then callback(value) end
   end
   function api:Get() return value end
   return api
@@ -400,7 +405,7 @@ local function createInput(parent, label, placeholder, callback)
   end)
 
   box.Focused:Connect(function()
-    tween(box, { BackgroundColor3 = Color3.fromHex("#e8f0fe") })
+    tween(box, { BackgroundColor3 = Color3.fromHex("#1a1a2a") })
   end)
   box.FocusLost:Connect(function()
     tween(box, { BackgroundColor3 = Theme.InputBG })
@@ -414,11 +419,12 @@ local function createInput(parent, label, placeholder, callback)
 end
 
 -- ──────────────────────────────────────────────
--- KEYBIND COMPONENT
+-- KEYBIND COMPONENT (Bindable)
 -- ──────────────────────────────────────────────
 local function createKeybind(parent, label, default, callback)
   local currentKey = default or Enum.KeyCode.Unknown
   local listening = false
+  local active = false
 
   local wrap = make("Frame", {
     Size = UDim2.new(1, 0, 0, 34),
@@ -443,7 +449,7 @@ local function createKeybind(parent, label, default, callback)
   local keyBtn = make("TextButton", {
     Size = UDim2.new(0, 46, 0, 22),
     Position = UDim2.new(1, -46, 0.5, -11),
-    BackgroundColor3 = Color3.fromHex("#f0f0f0"),
+    BackgroundColor3 = Color3.fromHex("#333333"),
     BorderSizePixel = 0,
     Text = keyName,
     TextColor3 = Theme.Text,
@@ -456,9 +462,10 @@ local function createKeybind(parent, label, default, callback)
   local function stopListen()
     listening = false
     if blinkConn then blinkConn:Disconnect(); blinkConn = nil end
-    tween(keyBtn, { BackgroundColor3 = Color3.fromHex("#f0f0f0") })
+    tween(keyBtn, { BackgroundColor3 = Color3.fromHex("#333333") })
     keyBtn.TextColor3 = Theme.Text
     keyBtn.Text = currentKey == Enum.KeyCode.Unknown and "NONE" or currentKey.Name:upper():sub(1,4)
+    keyBtn.TextTransparency = 0
   end
 
   keyBtn.MouseButton1Click:Connect(function()
@@ -469,7 +476,7 @@ local function createKeybind(parent, label, default, callback)
     listening = true
     keyBtn.Text = "..."
     tween(keyBtn, { BackgroundColor3 = Theme.AccentDark })
-    keyBtn.TextColor3 = Theme.Accent
+    keyBtn.TextColor3 = Theme.Green
     local t = 0
     blinkConn = RunService.Heartbeat:Connect(function(dt)
       t += dt
@@ -478,18 +485,36 @@ local function createKeybind(parent, label, default, callback)
   end)
 
   UserInputService.InputBegan:Connect(function(inp, gp)
-    if not listening then return end
+    if not listening then 
+      if not gp and inp.UserInputType == Enum.UserInputType.Keyboard and inp.KeyCode == currentKey then
+        active = true
+        if callback then callback(currentKey, active) end
+      end
+      return 
+    end
     if gp then return end 
     if inp.UserInputType == Enum.UserInputType.Keyboard then
       currentKey = inp.KeyCode
       stopListen()
-      if callback then callback(currentKey) end
+      if callback then callback(currentKey, false) end
+    end
+  end)
+
+  UserInputService.InputEnded:Connect(function(inp)
+    if inp.UserInputType == Enum.UserInputType.Keyboard and inp.KeyCode == currentKey then
+      active = false
+      if callback then callback(currentKey, active) end
     end
   end)
 
   local api = {}
+  api.OnChanged = callback
   function api:Get() return currentKey end
-  function api:Set(k) currentKey = k; stopListen() end
+  function api:Set(k)
+    currentKey = k
+    stopListen()
+    if api.OnChanged then api.OnChanged(k, false) end
+  end
   return api
 end
 
@@ -505,7 +530,7 @@ local function createSegmented(parent, options, defaultIndex, callback)
     LayoutOrder = 1,
   }, parent)
 
-  local layout = make("UIListLayout", {
+  make("UIListLayout", {
     FillDirection = Enum.FillDirection.Horizontal,
     SortOrder = Enum.SortOrder.LayoutOrder,
     Padding = UDim.new(0, 3),
@@ -519,7 +544,7 @@ local function createSegmented(parent, options, defaultIndex, callback)
         tween(btn, { BackgroundColor3 = Theme.GreenDark })
         btn.TextColor3 = Theme.Green
       else
-        tween(btn, { BackgroundColor3 = Color3.fromHex("#f0f0f0") })
+        tween(btn, { BackgroundColor3 = Color3.fromHex("#333333") })
         btn.TextColor3 = Theme.TextMuted
       end
     end
@@ -529,7 +554,7 @@ local function createSegmented(parent, options, defaultIndex, callback)
   for i, opt in ipairs(options) do
     local btn = make("TextButton", {
       Size = UDim2.new(1/count, -3, 1, 0),
-      BackgroundColor3 = i == selected and Theme.GreenDark or Color3.fromHex("#f0f0f0"),
+      BackgroundColor3 = i == selected and Theme.GreenDark or Color3.fromHex("#333333"),
       BorderSizePixel = 0,
       Text = opt,
       TextColor3 = i == selected and Theme.Green or Theme.TextMuted,
@@ -549,13 +574,13 @@ local function createSegmented(parent, options, defaultIndex, callback)
 
     btn.MouseEnter:Connect(function()
       if selected ~= idx then
-        tween(btn, { BackgroundColor3 = Color3.fromHex("#e4e4e4") })
+        tween(btn, { BackgroundColor3 = Color3.fromHex("#444444") })
         btn.TextColor3 = Theme.Text
       end
     end)
     btn.MouseLeave:Connect(function()
       if selected ~= idx then
-        tween(btn, { BackgroundColor3 = Color3.fromHex("#f0f0f0") })
+        tween(btn, { BackgroundColor3 = Color3.fromHex("#333333") })
         btn.TextColor3 = Theme.TextMuted
       end
     end)
@@ -566,6 +591,7 @@ local function createSegmented(parent, options, defaultIndex, callback)
   function api:Set(idx)
     selected = idx
     updateColors()
+    if callback then callback(selected, options[selected]) end
   end
   return api
 end
@@ -575,16 +601,16 @@ end
 -- ──────────────────────────────────────────────
 local function createButton(parent, label, variant, callback)
   local bgMap = {
-    default = Color3.fromHex("#f0f0f0"),
-    accent  = Color3.fromHex("#e8f0fe"),
-    danger  = Color3.fromHex("#fce8e8"),
-    success = Color3.fromHex("#e8f8e5"),
+    default = Color3.fromHex("#444444"),
+    accent  = Color3.fromHex("#1a3a6a"),
+    danger  = Color3.fromHex("#5a1a1a"),
+    success = Color3.fromHex("#1a4a1a"),
   }
   local txtMap = {
-    default = Color3.fromHex("#1a1a1a"),
-    accent  = Color3.fromHex("#1d4ed8"),
-    danger  = Color3.fromHex("#d63030"),
-    success = Color3.fromHex("#2a7d1e"),
+    default = Theme.Text,
+    accent  = Color3.fromHex("#88ccff"),
+    danger  = Color3.fromHex("#ff8888"),
+    success = Theme.Green,
   }
   local v = variant or "default"
 
@@ -698,6 +724,7 @@ local function createColorPicker(parent, label, default, callback)
     swatch.BackgroundColor3 = c
     hexBox.Text = string.format("#%02X%02X%02X",
       math.round(c.R * 255), math.round(c.G * 255), math.round(c.B * 255))
+    if callback then callback(color) end
   end
   return api
 end
@@ -793,7 +820,7 @@ local function createSection(windowBody, label)
 end
 
 -- ──────────────────────────────────────────────
--- WINDOW
+-- WINDOW (Tabbed System)
 -- ──────────────────────────────────────────────
 local function createWindow(title, iconId)
   local screenGui = make("ScreenGui", {
@@ -804,19 +831,22 @@ local function createWindow(title, iconId)
   })
 
   local win = make("Frame", {
-    Size = UDim2.new(0, 300, 0, 0),
-    Position = UDim2.new(0.5, -150, 0.5, -200),
+    Size = UDim2.new(0, 450, 0, 300),
+    Position = UDim2.new(0.5, -225, 0.5, -150),
     BackgroundColor3 = Theme.Panel,
     BorderSizePixel = 0,
-    AutomaticSize = Enum.AutomaticSize.Y,
+    ClipsDescendants = true,
     Parent = screenGui,
   })
   mcBorder(win, Theme.Border, Theme.BorderDark)
+
+  local winGrad, winTex = applyGradientAndTexture(win)
 
   local titlebar = make("Frame", {
     Size = UDim2.new(1, 0, 0, 32),
     BackgroundColor3 = Theme.TitleBG,
     BorderSizePixel = 0,
+    ZIndex = 2,
   }, win)
   mcBorder(titlebar, Theme.BorderDark)
 
@@ -827,6 +857,7 @@ local function createWindow(title, iconId)
       BackgroundTransparency = 1,
       Image = iconId,
       ScaleType = Enum.ScaleType.Fit,
+      ZIndex = 3,
     }, titlebar)
   end
 
@@ -839,6 +870,7 @@ local function createWindow(title, iconId)
     Font = Enum.Font.Code,
     TextSize = 18,
     TextXAlignment = Enum.TextXAlignment.Left,
+    ZIndex = 3,
   }, titlebar)
 
   local closeBtn = make("TextButton", {
@@ -850,6 +882,7 @@ local function createWindow(title, iconId)
     TextColor3 = Color3.new(1, 1, 1),
     Font = Enum.Font.Code,
     TextSize = 14,
+    ZIndex = 3,
   }, titlebar)
   mcBorder(closeBtn, Color3.fromHex("#800000"), Color3.fromHex("#400000"))
 
@@ -862,25 +895,36 @@ local function createWindow(title, iconId)
     TextColor3 = Color3.new(1, 1, 1),
     Font = Enum.Font.Code,
     TextSize = 14,
+    ZIndex = 3,
   }, titlebar)
   mcBorder(minBtn, Color3.fromHex("#0d3a8a"), Color3.fromHex("#061a3d"))
 
-  local body = make("Frame", {
-    Size = UDim2.new(1, 0, 0, 0),
+  local tabContainer = make("Frame", {
+    Size = UDim2.new(1, 0, 0, 28),
     Position = UDim2.new(0, 0, 0, 32),
-    BackgroundTransparency = 1,
-    AutomaticSize = Enum.AutomaticSize.Y,
+    BackgroundColor3 = Theme.TabBG,
+    BorderSizePixel = 0,
+    ZIndex = 2,
   }, win)
-  make("UIListLayout", {
+  mcBorder(tabContainer, Theme.BorderDark)
+
+  local tabList = make("UIListLayout", {
+    FillDirection = Enum.FillDirection.Horizontal,
     SortOrder = Enum.SortOrder.LayoutOrder,
-    Padding = UDim.new(0, 4),
-  }, body)
-  make("UIPadding", {
-    PaddingLeft = UDim.new(0, 8),
-    PaddingRight = UDim.new(0, 8),
-    PaddingTop = UDim.new(0, 8),
-    PaddingBottom = UDim.new(0, 8),
-  }, body)
+    Padding = UDim.new(0, 2),
+  }, tabContainer)
+  make("UIPadding", { PaddingLeft = UDim.new(0,4), PaddingRight = UDim.new(0,4), PaddingTop = UDim.new(0,2) }, tabContainer)
+
+  local contentArea = make("Frame", {
+    Size = UDim2.new(1, 0, 1, -60),
+    Position = UDim2.new(0, 0, 0, 60),
+    BackgroundTransparency = 1,
+    ClipsDescendants = true,
+    ZIndex = 1,
+  }, win)
+
+  local pages = {}
+  local activePage = nil
 
   local dragging, dragStart, startPos = false, nil, nil
   titlebar.InputBegan:Connect(function(inp)
@@ -916,17 +960,15 @@ local function createWindow(title, iconId)
   end)
 
   local isMinimized = false
+  local originalSize = win.Size
   minBtn.MouseButton1Click:Connect(function()
     isMinimized = not isMinimized
     if isMinimized then
-      body.Visible = false
-      win.AutomaticSize = Enum.AutomaticSize.None
-      win.Size = UDim2.new(0, 300, 0, 32)
+      originalSize = win.Size
+      tween(win, { Size = UDim2.new(0, 450, 0, 32) }, 0.2)
       minBtn.Text = "+"
     else
-      body.Visible = true
-      win.AutomaticSize = Enum.AutomaticSize.Y
-      win.Size = UDim2.new(0, 300, 0, 0)
+      tween(win, { Size = originalSize }, 0.2)
       minBtn.Text = "—"
     end
   end)
@@ -939,12 +981,92 @@ local function createWindow(title, iconId)
 
   local windowApi = {}
 
-  function windowApi:Section(label)
-    return createSection(body, label)
-  end
+  function windowApi:AddTab(name, icon)
+    local tabBtn = make("TextButton", {
+      Size = UDim2.new(0, 100, 1, 0),
+      BackgroundColor3 = Theme.TabBG,
+      BorderSizePixel = 0,
+      Text = (icon and "  " or "") .. name,
+      TextColor3 = Theme.TextMuted,
+      Font = Enum.Font.Code,
+      TextSize = 14,
+      ZIndex = 3,
+      LayoutOrder = #pages + 1,
+    }, tabContainer)
+    
+    if icon then
+      make("ImageLabel", {
+        Size = UDim2.new(0, 14, 0, 14),
+        Position = UDim2.new(0, 6, 0.5, -7),
+        BackgroundTransparency = 1,
+        Image = icon,
+        ScaleType = Enum.ScaleType.Fit,
+        ZIndex = 4,
+      }, tabBtn)
+      make("UIPadding", { PaddingLeft = UDim.new(0, 24) }, tabBtn)
+    else
+      make("UIPadding", { PaddingLeft = UDim.new(0, 8) }, tabBtn)
+    end
+    
+    local page = make("ScrollingFrame", {
+      Size = UDim2.new(1, 0, 1, 0),
+      BackgroundTransparency = 1,
+      ScrollBarThickness = 4,
+      ScrollBarImageColor3 = Theme.Border,
+      BorderSizePixel = 0,
+      Visible = false,
+      ZIndex = 1,
+    }, contentArea)
+    
+    local pageLayout = make("UIListLayout", {
+      SortOrder = Enum.SortOrder.LayoutOrder,
+      Padding = UDim.new(0, 4),
+    }, page)
+    make("UIPadding", {
+      PaddingLeft = UDim.new(0, 8),
+      PaddingRight = UDim.new(0, 8),
+      PaddingTop = UDim.new(0, 8),
+      PaddingBottom = UDim.new(0, 8),
+    }, page)
 
-  function windowApi:Divider()
-    createDivider(body)
+    local function activateTab()
+      for _, p in ipairs(pages) do
+        p.frame.Visible = false
+        tween(p.button, { BackgroundColor3 = Theme.TabBG })
+        p.button.TextColor3 = Theme.TextMuted
+      end
+      page.Visible = true
+      tween(tabBtn, { BackgroundColor3 = Theme.TabActive })
+      tabBtn.TextColor3 = Theme.Text
+      activePage = page
+    end
+
+    tabBtn.MouseButton1Click:Connect(activateTab)
+    
+    local pageApi = createSection(page, nil)
+    pageApi._frame = page
+    
+    function pageApi:SetBackground(url, transparency)
+      if not page:FindFirstChild("BGImage") then
+        make("ImageLabel", {
+          Name = "BGImage",
+          Size = UDim2.new(1, 0, 1, 0),
+          BackgroundTransparency = 1,
+          ScaleType = Enum.ScaleType.Crop,
+          ZIndex = 0,
+        }, page)
+      end
+      page.BGImage.Image = url
+      page.BGImage.ImageTransparency = transparency or 0.5
+    end
+
+    table.insert(pages, { frame = page, button = tabBtn, api = pageApi })
+    
+    if #pages == 1 then
+      activateTab()
+    end
+
+    return pageApi
   end
 
   function windowApi:Show()
@@ -957,12 +1079,6 @@ local function createWindow(title, iconId)
 
   function windowApi:Toggle()
     screenGui.Enabled = not screenGui.Enabled
-  end
-
-  function windowApi:SetTitle(t)
-    for _, v in ipairs(titlebar:GetChildren()) do
-      if v:IsA("TextLabel") then v.Text = t:upper() end
-    end
   end
 
   function windowApi:Destroy()
