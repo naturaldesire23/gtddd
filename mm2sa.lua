@@ -1,13 +1,12 @@
 --[[
-  Unified Angeli UI Library v6.0
-  Combines Fallen UI architecture with Angeli theming and customization.
+  Unified Angeli UI Library v6.1
   Features:
     - Working Minimization (Smooth animation, collapses to header)
     - Custom Background Support (Image URL/ID, Transparency, Blur)
     - Dark/Light Theme Support (Applies instantly)
     - Per-Toggle Keybinds & UI Toggle Keybind
     - Modular Groupboxes & Tabs
-    - No overlays, pure Angeli style
+    - All UI elements (Input, Dropdown, Slider, Checkbox, Button)
 ]]
 
 local UserInputService = cloneref and cloneref(game:GetService('UserInputService')) or game:GetService('UserInputService')
@@ -523,7 +522,7 @@ function Library:create_ui()
     Logo.BackgroundTransparency = 1
     Logo.BorderSizePixel = 0
     Logo.BorderColor3 = Color3.fromRGB(0, 0, 0)
-    Logo.Image = 'rbxassetid://86155014390461'
+    Logo.Image = 'rbxassetid://119051552929078' -- Atom icon
     Logo.ImageColor3 = Color3.fromRGB(255, 255, 255)
     Logo.ImageTransparency = 0
     Logo.ScaleType = Enum.ScaleType.Fit
@@ -1950,7 +1949,7 @@ function Library:create_ui()
                 Btn.MouseButton1Click:Connect(settings.callback)
             end
 
-            function ModuleManager:create_textbox(settings: any)
+            function ModuleManager:create_input(settings: any)
                 LayoutOrderModule = LayoutOrderModule + 1
 
                 if self._size == 0 then self._size = 11 end
