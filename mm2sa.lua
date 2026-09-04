@@ -1,5 +1,5 @@
 --[[
-  Angeli UI Library v4.1 - Fixed Font Compatibility
+  Angeli UI Library v4.2 - Fully Fixed Font
 ]]
 
 local AngeliUI = {}
@@ -168,7 +168,6 @@ function AngeliUI:CreateWindow(opts)
     local title = opts.Title or "Angeli UI"
     local size  = opts.Size or UDim2.fromOffset(660, 450)
     
-    -- Load saved config
     if opts.SaveConfig ~= false then
         pcall(function()
             local saved = readfile and readfile("AngeliUI_Config.json")
@@ -1372,10 +1371,8 @@ end
 function AngeliUI:AddInterfaceTab(window)
     local interfaceTab = window:AddTab({ Name = "Interface", Icon = "settings", Section = "Menu" })
     
-    -- Background Group
     local bgGroup = interfaceTab:AddGroupbox({ Title = "Background", Column = "Left" })
     
-    -- Input for background URL/ID
     local bgInput = bgGroup:AddInput({
         Name = "Image URL/ID",
         Placeholder = "rbxassetid://123 or pinimg URL",
@@ -1388,7 +1385,6 @@ function AngeliUI:AddInterfaceTab(window)
         end
     })
     
-    -- Quick preset buttons
     local presetGroup = interfaceTab:AddGroupbox({ Title = "Presets", Column = "Right" })
     presetGroup:AddButton({
         Name = "Dark Space",
@@ -1415,7 +1411,6 @@ function AngeliUI:AddInterfaceTab(window)
         end
     })
     
-    -- Sliders for transparency
     local opacityGroup = interfaceTab:AddGroupbox({ Title = "Opacity & Effects", Column = "Left" })
     
     local bgTransparency = opacityGroup:AddSlider({
@@ -1442,7 +1437,6 @@ function AngeliUI:AddInterfaceTab(window)
         end
     })
     
-    -- Theme Group
     local themeGroup = interfaceTab:AddGroupbox({ Title = "Theme", Column = "Right" })
     
     themeGroup:AddButton({
@@ -1461,7 +1455,6 @@ function AngeliUI:AddInterfaceTab(window)
         end
     })
     
-    -- Reset button
     local resetGroup = interfaceTab:AddGroupbox({ Title = "Reset", Column = "Right" })
     resetGroup:AddButton({
         Name = "Reset All Settings",
@@ -1484,5 +1477,4 @@ function AngeliUI:AddInterfaceTab(window)
     return interfaceTab
 end
 
--- ─── EXPORT ───
 return AngeliUI
