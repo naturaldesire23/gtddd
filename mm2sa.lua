@@ -1,5 +1,5 @@
 --[[
-  Angeli UI Library v4.2 - Fully Fixed Font
+  Angeli UI Library v4.3 - Patched Font, Background, Overlays
 ]]
 
 local AngeliUI = {}
@@ -8,7 +8,14 @@ local UserInputService = game:GetService("UserInputService")
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local HttpService = game:GetService("HttpService")
+local Stats = game:GetService("Stats")
+local Workspace = game:GetService("Workspace")
 local LocalPlayer = Players.LocalPlayer
+
+local function GetFont(name, weight)
+    local weight = weight or Enum.FontWeight.Regular
+    return Font.new("rbxasset://fonts/families/" .. name .. ".json", weight, Enum.FontStyle.Normal)
+end
 
 -- ─── CONFIG STORAGE ───
 local ConfigData = {
@@ -17,6 +24,8 @@ local ConfigData = {
     OverlayTransparency = 0.3,
     BlurAmount = 0,
     Theme = "dark",
+    ShowFPS = false,
+    ShowPing = false,
 }
 
 -- ─── THEMES ───
@@ -64,23 +73,6 @@ local Themes = {
 }
 
 local Theme = Themes.dark
-
--- ─── LUCIDE ICONS ───
-local LucideIcons = {
-    ["skull"]            = { Id = 16898613777, X = 49,  Y = 869 },
-    ["user"]             = { Id = 16898613869, X = 661, Y = 869 },
-    ["eye-off"]          = { Id = 16898613353, X = 820, Y = 514 },
-    ["list"]             = { Id = 16898613509, X = 869, Y = 808 },
-    ["save"]             = { Id = 16898613699, X = 918, Y = 453 },
-    ["book-open"]        = { Id = 16898612819, X = 820, Y = 355 },
-    ["chevrons-up-down"] = { Id = 16898612819, X = 918, Y = 759 },
-    ["database"]         = { Id = 16898613044, X = 710, Y = 869 },
-    ["settings"]         = { Id = 16898613869, X = 563, Y = 514 },
-    ["image"]            = { Id = 16898613353, X = 918, Y = 612 },
-    ["palette"]          = { Id = 16898613699, X = 820, Y = 661 },
-    ["cloud"]            = { Id = 16898613044, X = 918, Y = 464 },
-    ["circle"]           = { Id = 16898612819, X = 563, Y = 612 },
-}
 
 -- ─── HELPERS ───
 local function New(className, props, children)
@@ -130,36 +122,6 @@ end
 local function round(num, decimals)
     local mult = 10 ^ (decimals or 0)
     return math.floor(num * mult + 0.5) / mult
-end
-
-local function MakeIcon(parent, icon, size, color)
-    local asset = icon and LucideIcons[icon]
-    if asset then
-        return New("ImageLabel", {
-            Size = UDim2.fromOffset(size, size),
-            BackgroundTransparency = 1,
-            Image = "rbxassetid://" .. asset.Id,
-            ImageRectSize = Vector2.new(48, 48),
-            ImageRectOffset = Vector2.new(asset.X, asset.Y),
-            ImageColor3 = color,
-            ScaleType = Enum.ScaleType.Stretch,
-            Parent = parent,
-        })
-    elseif typeof(icon) == "string" and icon:match("^rbxasset") then
-        return New("ImageLabel", {
-            Size = UDim2.fromOffset(size, size),
-            BackgroundTransparency = 1,
-            Image = icon,
-            ImageColor3 = color,
-            Parent = parent,
-        })
-    end
-    return New("Frame", {
-        Size = UDim2.fromOffset(4, 4),
-        BackgroundColor3 = color,
-        BorderSizePixel = 0,
-        Parent = parent,
-    })
 end
 
 -- ─── MAIN LIBRARY ───
@@ -262,6 +224,29 @@ function AngeliUI:CreateWindow(opts)
     Corner(Main, 12)
     Stroke(Main, Theme.GroupStroke, 0.4)
     
+    local ContainerGradient = New("UIGradient", {
+        Color = ColorSequence.new{
+            ColorSequenceKeypoint.new(0.00, Color3.fromRGB(145, 145, 145)),
+            ColorSequenceKeypoint.new(0.11, Color3.fromRGB(0, 0, 0)),
+            ColorSequenceKeypoint.new(1.00, Color3.fromRGB(0, 0, 0))
+        },
+        Rotation = 90,
+        Parent = Main,
+    })
+
+    local Texture = New("ImageLabel", {
+        Name = "Texture",
+        Size = UDim2.new(1, 0, 1, 0),
+        BackgroundTransparency = 1,
+        Image = "rbxassetid://9968344227",
+        ImageColor3 = Color3.fromRGB(0, 0, 0),
+        ImageTransparency = 0.88,
+        ScaleType = Enum.ScaleType.Tile,
+        TileSize = UDim2.new(0, 128, 0, 128),
+        ZIndex = 0,
+        Parent = Main,
+    })
+    
     local uiScale = New("UIScale", { Scale = 0.96, Parent = Main })
     
     -- ─── HEADER ───
@@ -283,28 +268,6 @@ function AngeliUI:CreateWindow(opts)
         TextColor3 = Theme.Text,
         TextXAlignment = Enum.TextXAlignment.Left,
         Parent = Header,
-    })
-    
-    if opts.Logo then
-        local logo = MakeIcon(Header, opts.Logo, 20, Theme.Text)
-        logo.AnchorPoint = Vector2.new(1, 0.5)
-        logo.Position = UDim2.new(1, -14, 0.5, 0)
-    end
-    
-    -- ─── DIVIDERS ───
-    New("Frame", {
-        Position = UDim2.new(0, 0, 0, 46),
-        Size = UDim2.new(1, 0, 0, 1),
-        BackgroundColor3 = Theme.Divider,
-        BorderSizePixel = 0,
-        Parent = Main,
-    })
-    New("Frame", {
-        Position = UDim2.new(0, 160, 0, 46),
-        Size = UDim2.new(0, 1, 1, -46),
-        BackgroundColor3 = Theme.Divider,
-        BorderSizePixel = 0,
-        Parent = Main,
     })
     
     -- ─── DRAG LOGIC ───
@@ -424,6 +387,74 @@ function AngeliUI:CreateWindow(opts)
         HorizontalAlignment = Enum.HorizontalAlignment.Right,
         Parent = NotifyHolder,
     })
+    
+    -- ─── OVERLAYS (FPS / PING) ───
+    local OverlayHolder = New("Frame", {
+        Name = "Overlays",
+        Position = UDim2.new(0, 10, 0, 10),
+        Size = UDim2.new(0, 100, 0, 30),
+        BackgroundTransparency = 1,
+        Visible = false,
+        Parent = Gui,
+    })
+    New("UIListLayout", {
+        Padding = UDim.new(0, 4),
+        SortOrder = Enum.SortOrder.LayoutOrder,
+        Parent = OverlayHolder,
+    })
+
+    local FPSLabel = New("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 14),
+        BackgroundTransparency = 1,
+        Text = "FPS: 0",
+        Font = Enum.Font.Code,
+        TextSize = 12,
+        TextColor3 = Color3.fromRGB(255, 255, 255),
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Visible = false,
+        Parent = OverlayHolder,
+    })
+
+    local PingLabel = New("TextLabel", {
+        Size = UDim2.new(1, 0, 0, 14),
+        BackgroundTransparency = 1,
+        Text = "Ping: 0ms",
+        Font = Enum.Font.Code,
+        TextSize = 12,
+        TextColor3 = Color3.fromRGB(255, 255, 255),
+        TextXAlignment = Enum.TextXAlignment.Left,
+        Visible = false,
+        Parent = OverlayHolder,
+    })
+
+    local frames = 0
+    local lastUpdate = tick()
+    RunService.RenderStepped:Connect(function()
+        frames += 1
+        if tick() - lastUpdate >= 1 then
+            FPSLabel.Text = "FPS: " .. frames
+            frames = 0
+            lastUpdate = tick()
+        end
+    end)
+
+    task.spawn(function()
+        while task.wait(1) do
+            local ping = Stats and Stats.Network.ServerStatsItem and Stats.Network.ServerStatsItem.DataValue
+            if ping then
+                PingLabel.Text = "Ping: " .. math.round(ping) .. "ms"
+            else
+                PingLabel.Text = "Ping: N/A"
+            end
+        end
+    end)
+
+    local function updateOverlays()
+        FPSLabel.Visible = ConfigData.ShowFPS
+        PingLabel.Visible = ConfigData.ShowPing
+        OverlayHolder.Visible = ConfigData.ShowFPS or ConfigData.ShowPing
+    end
+    updateOverlays()
     
     -- ─── WINDOW API ───
     local Window = {}
@@ -844,139 +875,6 @@ function AngeliUI:CreateWindow(opts)
         }
     end
     
-    local function BuildDropdown(parent, order, o)
-        local options = o.Options or {}
-        local value = o.Default or options[1]
-        local HEADER_H = 26
-        local ROW_H = 23
-        local box = New("Frame", {
-            Name = "Dropdown_" .. o.Name,
-            LayoutOrder = order,
-            Size = UDim2.new(1, 0, 0, 0),
-            AutomaticSize = Enum.AutomaticSize.Y,
-            BackgroundTransparency = 1,
-            Parent = parent,
-        })
-        New("UIListLayout", { Padding = UDim.new(0, 5), SortOrder = Enum.SortOrder.LayoutOrder, Parent = box })
-        New("TextLabel", {
-            LayoutOrder = 1,
-            Size = UDim2.new(1, 0, 0, 14),
-            BackgroundTransparency = 1,
-            Text = o.Name,
-            Font = Enum.Font.Gotham,
-            TextSize = 15,
-            TextColor3 = Theme.TextSoft,
-            TextXAlignment = Enum.TextXAlignment.Left,
-            Parent = box,
-        })
-        local holder = New("Frame", {
-            LayoutOrder = 2,
-            Size = UDim2.new(1, 0, 0, HEADER_H),
-            BackgroundColor3 = Theme.Control,
-            ClipsDescendants = true,
-            BorderSizePixel = 0,
-            Parent = box,
-        })
-        Corner(holder, 7)
-        local header = New("TextButton", {
-            Size = UDim2.new(1, 0, 0, HEADER_H),
-            BackgroundTransparency = 1,
-            Text = "",
-            AutoButtonColor = false,
-            Parent = holder,
-        })
-        local valueText = New("TextLabel", {
-            Position = UDim2.new(0, 10, 0, 0),
-            Size = UDim2.new(1, -36, 1, 0),
-            BackgroundTransparency = 1,
-            Text = tostring(value),
-            Font = Enum.Font.Gotham,
-            TextSize = 14,
-            TextColor3 = Theme.TextSoft,
-            TextXAlignment = Enum.TextXAlignment.Left,
-            TextTruncate = Enum.TextTruncate.AtEnd,
-            Parent = header,
-        })
-        local chev = MakeIcon(header, "chevrons-up-down", 14, Theme.TextDim)
-        chev.AnchorPoint = Vector2.new(1, 0.5)
-        chev.Position = UDim2.new(1, -8, 0.5, 0)
-        local optionsFrame = New("Frame", {
-            Position = UDim2.new(0, 0, 0, HEADER_H),
-            Size = UDim2.new(1, 0, 0, #options * ROW_H),
-            BackgroundTransparency = 1,
-            Parent = holder,
-        })
-        New("UIListLayout", {
-            Padding = UDim.new(0, 0),
-            SortOrder = Enum.SortOrder.LayoutOrder,
-            Parent = optionsFrame,
-        })
-        local open = false
-        local animating = false
-        local setOpen
-        for i, opt in ipairs(options) do
-            local rowBtn = New("TextButton", {
-                LayoutOrder = i,
-                Size = UDim2.new(1, 0, 0, ROW_H),
-                BackgroundTransparency = 1,
-                Text = "",
-                AutoButtonColor = false,
-                Parent = optionsFrame,
-            })
-            local lbl = New("TextLabel", {
-                Position = UDim2.new(0, 10, 0, 0),
-                Size = UDim2.new(1, -20, 1, 0),
-                BackgroundTransparency = 1,
-                Text = tostring(opt),
-                Font = Enum.Font.Gotham,
-                TextSize = 13,
-                TextColor3 = Theme.TextDim,
-                TextXAlignment = Enum.TextXAlignment.Left,
-                Parent = rowBtn,
-            })
-            rowBtn.MouseEnter:Connect(function()
-                Tween(lbl, TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { TextColor3 = Theme.Text })
-            end)
-            rowBtn.MouseLeave:Connect(function()
-                Tween(lbl, TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { TextColor3 = Theme.TextDim })
-            end)
-            rowBtn.MouseButton1Click:Connect(function()
-                value = tostring(opt)
-                valueText.Text = value
-                setOpen(false)
-                if o.Callback then task.spawn(o.Callback, value) end
-            end)
-        end
-        setOpen = function(state)
-            if animating or state == open then return end
-            open = state
-            animating = true
-            Tween(chev, TweenInfo.new(0.22, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { Rotation = open and 180 or 0 })
-            local target = HEADER_H + (open and (#options * ROW_H) or 0)
-            local tw = TweenService:Create(holder, open and TweenInfo.new(0.24, Enum.EasingStyle.Quint, Enum.EasingDirection.Out) or TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
-                { Size = UDim2.new(1, 0, 0, target) })
-            tw.Completed:Once(function() animating = false end)
-            tw:Play()
-        end
-        header.MouseButton1Click:Connect(function()
-            setOpen(not open)
-        end)
-        header.MouseEnter:Connect(function()
-            Tween(valueText, TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { TextColor3 = Theme.Text })
-        end)
-        header.MouseLeave:Connect(function()
-            Tween(valueText, TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { TextColor3 = Theme.TextSoft })
-        end)
-        return {
-            Get = function() return value end,
-            Set = function(_, v)
-                value = tostring(v)
-                valueText.Text = value
-                if o.Callback then task.spawn(o.Callback, value) end
-            end,
-        }
-    end
-    
     local function BuildButton(parent, order, o)
         local btn = New("TextButton", {
             Name = "Button_" .. o.Name,
@@ -1000,24 +898,6 @@ function AngeliUI:CreateWindow(opts)
             if o.Callback then task.spawn(o.Callback) end
         end)
         return btn
-    end
-    
-    local function BuildLabel(parent, order, o)
-        return New("TextLabel", {
-            Name = "Label",
-            LayoutOrder = order,
-            Size = UDim2.new(1, 0, 0, 0),
-            AutomaticSize = Enum.AutomaticSize.Y,
-            BackgroundTransparency = 1,
-            Text = o.Text or "",
-            Font = Enum.Font.Gotham,
-            TextSize = 13,
-            TextColor3 = o.Color or Theme.TextDim,
-            TextWrapped = true,
-            TextXAlignment = Enum.TextXAlignment.Left,
-            TextYAlignment = Enum.TextYAlignment.Top,
-            Parent = parent,
-        })
     end
     
     local function BuildInput(parent, order, o)
@@ -1102,9 +982,7 @@ function AngeliUI:CreateWindow(opts)
         end
         function Group:AddToggle(o)    return BuildToggle(group, nextOrder(), o) end
         function Group:AddSlider(o)    return BuildSlider(group, nextOrder(), o) end
-        function Group:AddDropdown(o)  return BuildDropdown(group, nextOrder(), o) end
         function Group:AddButton(o)    return BuildButton(group, nextOrder(), o) end
-        function Group:AddLabel(o)     return BuildLabel(group, nextOrder(), o) end
         function Group:AddInput(o)     return BuildInput(group, nextOrder(), o) end
         return Group
     end
@@ -1159,13 +1037,6 @@ function AngeliUI:CreateWindow(opts)
                 BackgroundTransparency = selected and 0 or 1,
             })
             t.NameLabel.TextColor3 = selected and Theme.Text or Theme.TextDim
-            if t.IconRef then
-                if t.IconRef:IsA("ImageLabel") then
-                    Tween(t.IconRef, TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { ImageColor3 = selected and Theme.Text or Theme.TextDim })
-                else
-                    Tween(t.IconRef, TweenInfo.new(0.14, Enum.EasingStyle.Quad, Enum.EasingDirection.Out), { BackgroundColor3 = selected and Theme.Text or Theme.TextDim })
-                end
-            end
         end
         moveIndicatorTo(tab, instant)
     end
@@ -1203,12 +1074,9 @@ function AngeliUI:CreateWindow(opts)
             Parent = Sidebar,
         })
         Corner(button, 8)
-        local iconRef = MakeIcon(button, tabOpts.Icon, 17, Theme.TextDim)
-        iconRef.AnchorPoint = Vector2.new(0, 0.5)
-        iconRef.Position = UDim2.new(0, 12, 0.5, 0)
         local nameLabel = New("TextLabel", {
-            Position = UDim2.new(0, 36, 0, 0),
-            Size = UDim2.new(1, -42, 1, 0),
+            Position = UDim2.new(0, 12, 0, 0),
+            Size = UDim2.new(1, -12, 1, 0),
             BackgroundTransparency = 1,
             Text = tabOpts.Name or "Tab",
             Font = Enum.Font.Gotham,
@@ -1275,7 +1143,6 @@ function AngeliUI:CreateWindow(opts)
         Tab.Scroller = scroller
         Tab.Button = button
         Tab.NameLabel = nameLabel
-        Tab.IconRef = iconRef
         table.insert(tabs, Tab)
         button.MouseButton1Click:Connect(function()
             if currentTab ~= Tab then
@@ -1369,7 +1236,7 @@ end
 
 -- ─── INTERFACE TAB BUILDER ───
 function AngeliUI:AddInterfaceTab(window)
-    local interfaceTab = window:AddTab({ Name = "Interface", Icon = "settings", Section = "Menu" })
+    local interfaceTab = window:AddTab({ Name = "Interface", Section = "Menu" })
     
     local bgGroup = interfaceTab:AddGroupbox({ Title = "Background", Column = "Left" })
     
@@ -1437,7 +1304,27 @@ function AngeliUI:AddInterfaceTab(window)
         end
     })
     
-    local themeGroup = interfaceTab:AddGroupbox({ Title = "Theme", Column = "Right" })
+    local overlayGroup = interfaceTab:AddGroupbox({ Title = "Overlays", Column = "Right" })
+    overlayGroup:AddToggle({
+        Name = "Show FPS",
+        Default = ConfigData.ShowFPS or false,
+        Callback = function(val)
+            ConfigData.ShowFPS = val
+            updateOverlays()
+            window:SaveConfig()
+        end
+    })
+    overlayGroup:AddToggle({
+        Name = "Show Ping",
+        Default = ConfigData.ShowPing or false,
+        Callback = function(val)
+            ConfigData.ShowPing = val
+            updateOverlays()
+            window:SaveConfig()
+        end
+    })
+
+    local themeGroup = interfaceTab:AddGroupbox({ Title = "Theme", Column = "Left" })
     
     themeGroup:AddButton({
         Name = "Dark Theme",
@@ -1463,6 +1350,8 @@ function AngeliUI:AddInterfaceTab(window)
             ConfigData.BackgroundTransparency = 0
             ConfigData.OverlayTransparency = 0.3
             ConfigData.BlurAmount = 0
+            ConfigData.ShowFPS = false
+            ConfigData.ShowPing = false
             window:SetBackground("")
             window:SetOverlay(0.3)
             window:SetBlur(0)
@@ -1470,6 +1359,7 @@ function AngeliUI:AddInterfaceTab(window)
             bgTransparency:Set(0)
             overlayTransparency:Set(0.3)
             blurAmount:Set(0)
+            updateOverlays()
             window:Notify({ Title = "Reset", Text = "All settings reset!" })
         end
     })
