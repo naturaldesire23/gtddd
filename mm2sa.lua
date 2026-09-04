@@ -136,9 +136,33 @@ Library.__index = Library
 Library.Connections = Connections
 
 function Library.new()
-    local self = setmetatable({ _tab = 0 }, Library)
+    local self = setmetatable({ _tab = 0, _queued_interface_tab = nil }, Library)
     self:create_ui()
     self:build_interface_tab()
+    
+    if self._queued_interface_tab then
+        local last_tab = nil
+        for _, obj in ipairs(self._ui.Container.Handler.Tabs:GetChildren()) do
+            if obj.Name == 'Tab' then
+                if last_tab and obj.LayoutOrder > last_tab.LayoutOrder then
+                    last_tab = obj
+                elseif not last_tab then
+                    last_tab = obj
+                end
+            end
+        end
+        
+        if last_tab and last_tab ~= self._queued_interface_tab then
+            local max_order = 0
+            for _, obj in ipairs(self._ui.Container.Handler.Tabs:GetChildren()) do
+                if obj.Name == 'Tab' and obj.LayoutOrder > max_order then
+                    max_order = obj.LayoutOrder
+                end
+            end
+            self._queued_interface_tab.LayoutOrder = max_order + 1
+        end
+    end
+    
     return self
 end
 
@@ -877,6 +901,10 @@ function Library:create_ui()
             self:update_sections(LeftSection, RightSection)
         end)
 
+        if title == 'Interface' then
+            self._queued_interface_tab = Tab
+        end
+
         function TabManager:create_module(settings)
             local LayoutOrderModule = 0;
             local ModuleManager = {
@@ -1580,7 +1608,9 @@ function Library:create_ui()
                 end)
 
                 Library._flag_registry[settings.flag] = function(state)
-                    CheckboxManager:change_state(state)
+                    if Toggle and Toggle.Parent then
+                        CheckboxManager:change_state(state)
+                    end
                 end
 
                 return CheckboxManager
@@ -2826,7 +2856,9 @@ function Library:build_interface_tab()
             Field.BackgroundColor3 = Color3.fromHSV(hue, 1, 1)
             Cursor.Position        = UDim2.new(saturation, 0, 1 - brightness, 0)
             Hue_Knob.Position      = UDim2.new(hue, 0, 0.5, 0)
-            Color_Swatches[Selected_Color_Target].BackgroundColor3 = color
+            if Color_Swatches[Selected_Color_Target] then
+                Color_Swatches[Selected_Color_Target].BackgroundColor3 = color
+            end
 
             self:SetColor(Selected_Color_Target, color)
         end
@@ -2881,7 +2913,9 @@ function Library:build_interface_tab()
         local function close_popup()
             Popup.Visible = false
             for _, swatch in Color_Swatches do
-                swatch.UIStroke.Transparency = 0.72
+                if swatch.UIStroke then
+                    swatch.UIStroke.Transparency = 0.72
+                end
             end
         end
 
@@ -2894,7 +2928,9 @@ function Library:build_interface_tab()
             Selected_Color_Target = target
 
             for name, object in Color_Swatches do
-                object.UIStroke.Transparency = name == target and 0 or 0.72
+                if object.UIStroke then
+                    object.UIStroke.Transparency = name == target and 0 or 0.72
+                end
             end
 
             local scale      = Handler.AbsoluteSize.X / 752
@@ -2974,7 +3010,9 @@ function Library:build_interface_tab()
             for target, color in pairs(DefaultTheme) do
                 if typeof(color) == "Color3" then
                     self:SetColor(target, color)
-                    Color_Swatches[target].BackgroundColor3 = color
+                    if Color_Swatches[target] then
+                        Color_Swatches[target].BackgroundColor3 = color
+                    end
                 end
             end
         end)
