@@ -1,4 +1,4 @@
--- Unified Angeli UI Library v8.0
+-- Unified Angeli UI Library v9.0
 local UserInputService = cloneref and cloneref(game:GetService('UserInputService')) or game:GetService('UserInputService')
 local TweenService = cloneref and cloneref(game:GetService('TweenService')) or game:GetService('TweenService')
 local HttpService = cloneref and cloneref(game:GetService('HttpService')) or game:GetService('HttpService')
@@ -127,7 +127,10 @@ local Library = {
     _flag_registry = {},
     _elements = {},
     _notif_side = "Right",
-    _notif_opacity = 0.0
+    _notif_opacity = 0.0,
+    _container_gradient = nil,
+    _side_gradient = nil,
+    _ui_stroke = nil
 }
 Library.__index = Library
 Library.Connections = Connections
@@ -372,6 +375,7 @@ function Library:create_ui()
     ContainerGradient.Color = Theme.Gradient
     ContainerGradient.Rotation = 90
     ContainerGradient.Parent = Container
+    self._container_gradient = ContainerGradient
 
     local Background = Instance.new('ImageLabel')
     Background.Name = 'Background'
@@ -417,6 +421,7 @@ function Library:create_ui()
     SideGradient.Color = Theme.Gradient
     SideGradient.Rotation = 90
     SideGradient.Parent = SideBar
+    self._side_gradient = SideGradient
 
     local UICorner = Instance.new('UICorner')
     UICorner.CornerRadius = UDim.new(0, 10)
@@ -427,6 +432,7 @@ function Library:create_ui()
     UIStroke.Transparency = 0.58
     UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     UIStroke.Parent = Container
+    self._ui_stroke = UIStroke
 
     local Handler = Instance.new('Frame')
     Handler.BackgroundTransparency = 1
@@ -2030,7 +2036,7 @@ function Library:create_ui()
                 local Dropdown = Instance.new('TextButton')
                 Dropdown.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
                 Dropdown.TextColor3 = Color3.fromRGB(0, 0, 0)
-                Dropdown.BorderColor3 = Color3.fromRGB(0, 0, 0)
+                Dropdown.BorderColor3 = Color3.fromRGB(0, 0,0)
                 Dropdown.Text = ''
                 Dropdown.AutoButtonColor = false
                 Dropdown.BackgroundTransparency = 1
@@ -2433,10 +2439,10 @@ function Library:create_ui()
             end
         end
         if key == "Gradient" then
-            ContainerGradient.Color = color
-            SideGradient.Color = color
+            self._container_gradient.Color = color
+            self._side_gradient.Color = color
         elseif key == "GroupStroke" then
-            UIStroke.Color = color
+            self._ui_stroke.Color = color
         end
         self:SaveConfig()
     end
@@ -2579,7 +2585,7 @@ function Library:build_interface_tab()
         ['Preset 1']  = 'https://i.pinimg.com/736x/bd/12/a5/bd12a561f083960f6c1382c54f4df234.jpg',
         ['Preset 2']  = 'https://i.pinimg.com/736x/53/bd/84/53bd848d7ca43b57612117292d7ff979.jpg',
         ['Preset 3']  = 'https://i.pinimg.com/736x/db/26/c7/db26c713d48342bd15c0ee8f623e19c6.jpg',
-        ['Preset 4']  = 'https://i.pinimg.com/736x/dc/ad/10/dcad1026de88c85a417c6f4dd0b620c8.jpg',
+        ['Preset 4']  = 'https://i.pinimg.com/736x/dc/ad/10/dcad1026de88c854a17c6f4dd0b620c8.jpg',
         ['Preset 5']  = 'https://i.pinimg.com/736x/fe/88/90/fe88905bf7387c8827ffaf4a5aae7068.jpg',
         ['Preset 6']  = 'https://i.pinimg.com/736x/6a/82/5e/6a825e0e447466bad8295e9dc9b87486.jpg',
         ['Preset 7']  = 'https://i.pinimg.com/originals/10/ff/4f/10ff4f98a494e390e07b1a0e9eefa4be.gif',
@@ -2652,7 +2658,13 @@ function Library:build_interface_tab()
         flag        = 'Gui_Colors',
         description = 'Customize UI Colors',
         section     = 'left',
-        callback    = function(state) end,
+        callback    = function(state) 
+            if state then
+                for k, v in pairs(Theme) do
+                    self:SetColor(k, v)
+                end
+            end
+        end,
     })
 
     local Color_Module_Frame = find_module_frame('Appearance')
@@ -3143,39 +3155,6 @@ function Library:build_interface_tab()
         callback = function(state) end,
     })
 
-    local notif_module = InterfaceTab:create_module({
-        title       = 'Notifications',
-        flag        = 'UI_Notifications',
-        description = 'Configure notification behavior',
-        section     = 'right',
-        callback    = function(state) end,
-    })
-
-    notif_module:create_dropdown({
-        title           = 'Side',
-        flag            = 'UI_Notif_Side',
-        options         = { 'Left', 'Right' },
-        multi_dropdown  = false,
-        maximum_options = 2,
-        callback        = function(value)
-            local side = (typeof(value) == "string" and value) or value.Name
-            Library._notif_side = side
-            UpdateNotificationPosition()
-        end,
-    })
-
-    notif_module:create_slider({
-        title         = 'Opacity',
-        flag          = 'UI_Notif_Opacity',
-        minimum_value = 0,
-        maximum_value = 100,
-        value         = 0,
-        round_number  = true,
-        callback      = function(value)
-            Library._notif_opacity = value / 100
-        end,
-    })
-
     local function FpsBooster(state)
         if state then
             pcall(function()
@@ -3219,7 +3198,7 @@ function Library:build_interface_tab()
         end
     end
 
-    notif_module:create_checkbox({
+    settings_module:create_checkbox({
         title    = 'FPS Booster',
         flag     = 'UI_FPS_Booster',
         callback = function(state) 
@@ -3228,13 +3207,13 @@ function Library:build_interface_tab()
     })
 
     local FpsGui = Instance.new("ScreenGui")
-    FpsGui.Name = "FpsPingDisplay"
+    FpsGui.Name = "FpsDisplay"
     FpsGui.ResetOnSpawn = false
     FpsGui.Parent = CoreGui
 
     local FpsFrame = Instance.new("TextLabel")
-    FpsFrame.Size = UDim2.new(0, 220, 0, 70)
-    FpsFrame.Position = UDim2.new(0.5, -110, 0, 20)
+    FpsFrame.Size = UDim2.new(0, 200, 0, 50)
+    FpsFrame.Position = UDim2.new(0.5, -100, 0, 20)
     FpsFrame.BackgroundTransparency = 1
     FpsFrame.TextScaled = true
     FpsFrame.Font = Enum.Font.Arcade
@@ -3246,7 +3225,6 @@ function Library:build_interface_tab()
 
     local lastTime = tick()
     local frameCount = 0
-    local currentPing = 0
 
     RunService.RenderStepped:Connect(function()
         frameCount = frameCount + 1
@@ -3256,31 +3234,22 @@ function Library:build_interface_tab()
             frameCount = 0
             lastTime = currentTime
 
-            local pingSuccess, pingValue = pcall(function()
-                return game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()
-            end)
-
-            if pingSuccess then
-                currentPing = pingValue
-            end
-
-            FpsFrame.Text = string.format("FPS: %d\nPing: %d ms", fps, currentPing)
+            FpsFrame.Text = string.format("FPS: %d", fps)
         end
     end)
 
-    notif_module:create_checkbox({
-        title    = 'Show FPS & Ping (Text)',
+    settings_module:create_checkbox({
+        title    = 'Show FPS (Text)',
         flag     = 'UI_Show_Fps_Text',
         callback = function(state)
             FpsGui.Enabled = state
             if state then
                 PingGraphGui.Enabled = false
-                self._flag_registry['UI_Show_Fps_Graph'](false)
+                self._flag_registry['UI_Show_Ping_Graph'](false)
             end
         end,
     })
 
-    -- Ping Graph Overlay
     local PingGraphGui = Instance.new("ScreenGui")
     PingGraphGui.Name = "PingGraph"
     PingGraphGui.ResetOnSpawn = false
@@ -3482,15 +3451,48 @@ function Library:build_interface_tab()
         end
     end)
 
-    notif_module:create_checkbox({
-        title    = 'Show FPS & Ping (Graph)',
-        flag     = 'UI_Show_Fps_Graph',
+    settings_module:create_checkbox({
+        title    = 'Show Ping (Graph)',
+        flag     = 'UI_Show_Ping_Graph',
         callback = function(state)
             PingGraphGui.Enabled = state
             if state then
                 FpsGui.Enabled = false
                 self._flag_registry['UI_Show_Fps_Text'](false)
             end
+        end,
+    })
+
+    local notif_module = InterfaceTab:create_module({
+        title       = 'Notifications',
+        flag        = 'UI_Notifications',
+        description = 'Configure notification behavior',
+        section     = 'right',
+        callback    = function(state) end,
+    })
+
+    notif_module:create_dropdown({
+        title           = 'Side',
+        flag            = 'UI_Notif_Side',
+        options         = { 'Left', 'Right' },
+        multi_dropdown  = false,
+        maximum_options = 2,
+        callback        = function(value)
+            local side = (typeof(value) == "string" and value) or value.Name
+            Library._notif_side = side
+            UpdateNotificationPosition()
+        end,
+    })
+
+    notif_module:create_slider({
+        title         = 'Opacity',
+        flag          = 'UI_Notif_Opacity',
+        minimum_value = 0,
+        maximum_value = 100,
+        value         = 0,
+        round_number  = true,
+        callback      = function(value)
+            Library._notif_opacity = value / 100
         end,
     })
 end
