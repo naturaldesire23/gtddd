@@ -1,11 +1,5 @@
 --[[
-  Angeli UI Library v4.0 - Enhanced with Interface Customization
-  Features:
-    - Background image support (pinimg, rbxassetid, etc.)
-    - Transparency controls
-    - Blur effect
-    - Color scheme customization
-    - All settings persist
+  Angeli UI Library v4.1 - Fixed Font Compatibility
 ]]
 
 local AngeliUI = {}
@@ -22,7 +16,7 @@ local ConfigData = {
     BackgroundTransparency = 0,
     OverlayTransparency = 0.3,
     BlurAmount = 0,
-    Theme = "dark", -- dark, light, custom
+    Theme = "dark",
 }
 
 -- ─── THEMES ───
@@ -92,12 +86,16 @@ local LucideIcons = {
 local function New(className, props, children)
     local inst = Instance.new(className)
     for k, v in pairs(props or {}) do
-        if k ~= "Parent" then inst[k] = v end
+        if k ~= "Parent" then
+            inst[k] = v
+        end
     end
     for _, child in ipairs(children or {}) do
         child.Parent = inst
     end
-    if props and props.Parent ~= nil then inst.Parent = props.Parent end
+    if props and props.Parent ~= nil then
+        inst.Parent = props.Parent
+    end
     return inst
 end
 
@@ -506,8 +504,7 @@ function AngeliUI:CreateWindow(opts)
             LayoutOrder = 2, Size = UDim2.new(1, 0, 0, 0),
             AutomaticSize = Enum.AutomaticSize.Y,
             BackgroundTransparency = 1, Text = n.Text or "",
-            Font = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal),
-            TextSize = 12, TextColor3 = Theme.TextDim,
+            Font = Enum.Font.Gotham, TextSize = 12, TextColor3 = Theme.TextDim,
             TextWrapped = true, TextXAlignment = Enum.TextXAlignment.Left,
             TextYAlignment = Enum.TextYAlignment.Top, Parent = toast,
         })
@@ -623,7 +620,7 @@ function AngeliUI:CreateWindow(opts)
             Size = UDim2.new(1, -92, 1, 0),
             BackgroundTransparency = 1,
             Text = o.Name,
-            Font = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal),
+            Font = Enum.Font.Gotham,
             TextSize = 15,
             TextColor3 = Theme.Text,
             TextXAlignment = Enum.TextXAlignment.Left,
@@ -674,7 +671,7 @@ function AngeliUI:CreateWindow(opts)
             AutomaticSize = Enum.AutomaticSize.X,
             BackgroundColor3 = Theme.Control,
             Text = keyCode and keyCode.Name or "",
-            Font = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal),
+            Font = Enum.Font.Gotham,
             TextSize = 12,
             TextColor3 = Theme.TextSoft,
             AutoButtonColor = false,
@@ -725,7 +722,7 @@ function AngeliUI:CreateWindow(opts)
             Size = UDim2.new(1, -40, 0, 15),
             BackgroundTransparency = 1,
             Text = o.Name,
-            Font = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal),
+            Font = Enum.Font.Gotham,
             TextSize = 15,
             TextColor3 = Theme.TextSoft,
             TextXAlignment = Enum.TextXAlignment.Left,
@@ -738,7 +735,7 @@ function AngeliUI:CreateWindow(opts)
             AutomaticSize = Enum.AutomaticSize.X,
             BackgroundTransparency = 1,
             Text = tostring(value),
-            Font = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal),
+            Font = Enum.Font.Gotham,
             TextSize = 14,
             TextColor3 = Theme.Text,
             TextXAlignment = Enum.TextXAlignment.Right,
@@ -867,7 +864,7 @@ function AngeliUI:CreateWindow(opts)
             Size = UDim2.new(1, 0, 0, 14),
             BackgroundTransparency = 1,
             Text = o.Name,
-            Font = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal),
+            Font = Enum.Font.Gotham,
             TextSize = 15,
             TextColor3 = Theme.TextSoft,
             TextXAlignment = Enum.TextXAlignment.Left,
@@ -894,7 +891,7 @@ function AngeliUI:CreateWindow(opts)
             Size = UDim2.new(1, -36, 1, 0),
             BackgroundTransparency = 1,
             Text = tostring(value),
-            Font = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal),
+            Font = Enum.Font.Gotham,
             TextSize = 14,
             TextColor3 = Theme.TextSoft,
             TextXAlignment = Enum.TextXAlignment.Left,
@@ -932,7 +929,7 @@ function AngeliUI:CreateWindow(opts)
                 Size = UDim2.new(1, -20, 1, 0),
                 BackgroundTransparency = 1,
                 Text = tostring(opt),
-                Font = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal),
+                Font = Enum.Font.Gotham,
                 TextSize = 13,
                 TextColor3 = Theme.TextDim,
                 TextXAlignment = Enum.TextXAlignment.Left,
@@ -988,7 +985,7 @@ function AngeliUI:CreateWindow(opts)
             Size = UDim2.new(1, 0, 0, 26),
             BackgroundColor3 = Theme.Control,
             Text = o.Name,
-            Font = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal),
+            Font = Enum.Font.Gotham,
             TextSize = 14,
             TextColor3 = Theme.TextSoft,
             AutoButtonColor = false,
@@ -1014,7 +1011,7 @@ function AngeliUI:CreateWindow(opts)
             AutomaticSize = Enum.AutomaticSize.Y,
             BackgroundTransparency = 1,
             Text = o.Text or "",
-            Font = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal),
+            Font = Enum.Font.Gotham,
             TextSize = 13,
             TextColor3 = o.Color or Theme.TextDim,
             TextWrapped = true,
@@ -1024,7 +1021,6 @@ function AngeliUI:CreateWindow(opts)
         })
     end
     
-    -- ─── INPUT BOX ───
     local function BuildInput(parent, order, o)
         local box = New("Frame", {
             Name = "Input_" .. o.Name,
@@ -1037,7 +1033,7 @@ function AngeliUI:CreateWindow(opts)
             Size = UDim2.new(1, 0, 0, 14),
             BackgroundTransparency = 1,
             Text = o.Name,
-            Font = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal),
+            Font = Enum.Font.Gotham,
             TextSize = 13,
             TextColor3 = Theme.TextSoft,
             TextXAlignment = Enum.TextXAlignment.Left,
@@ -1052,7 +1048,7 @@ function AngeliUI:CreateWindow(opts)
             PlaceholderText = o.Placeholder or "",
             PlaceholderColor3 = Theme.TextDim,
             TextColor3 = Theme.Text,
-            Font = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal),
+            Font = Enum.Font.Gotham,
             TextSize = 13,
             TextXAlignment = Enum.TextXAlignment.Left,
             ClearTextOnFocus = false,
@@ -1216,7 +1212,7 @@ function AngeliUI:CreateWindow(opts)
             Size = UDim2.new(1, -42, 1, 0),
             BackgroundTransparency = 1,
             Text = tabOpts.Name or "Tab",
-            Font = Font.new("rbxasset://fonts/families/GothamSSm.json", Enum.FontWeight.SemiBold, Enum.FontStyle.Normal),
+            Font = Enum.Font.Gotham,
             TextSize = 14,
             TextColor3 = Theme.TextDim,
             TextXAlignment = Enum.TextXAlignment.Left,
@@ -1393,22 +1389,31 @@ function AngeliUI:AddInterfaceTab(window)
     })
     
     -- Quick preset buttons
-    local presetGroup = bgGroup:AddGroupbox({ Title = "Presets", Column = "Right" })
-    local presets = {
-        { "Dark", "rbxassetid://123456789" },
-        { "Space", "rbxassetid://987654321" },
-        { "City", "https://i.pinimg.com/564x/xxx.jpg" },
-    }
-    for _, preset in ipairs(presets) do
-        presetGroup:AddButton({
-            Name = preset[1],
-            Callback = function()
-                window:SetBackground(preset[2])
-                bgInput:Set(preset[2])
-                window:Notify({ Title = "Background", Text = "Switched to " .. preset[1] })
-            end
-        })
-    end
+    local presetGroup = interfaceTab:AddGroupbox({ Title = "Presets", Column = "Right" })
+    presetGroup:AddButton({
+        Name = "Dark Space",
+        Callback = function()
+            window:SetBackground("rbxassetid://123456789")
+            bgInput:Set("rbxassetid://123456789")
+            window:Notify({ Title = "Background", Text = "Switched to Dark Space" })
+        end
+    })
+    presetGroup:AddButton({
+        Name = "Nebula",
+        Callback = function()
+            window:SetBackground("rbxassetid://987654321")
+            bgInput:Set("rbxassetid://987654321")
+            window:Notify({ Title = "Background", Text = "Switched to Nebula" })
+        end
+    })
+    presetGroup:AddButton({
+        Name = "Clear",
+        Callback = function()
+            window:SetBackground("")
+            bgInput:Set("")
+            window:Notify({ Title = "Background", Text = "Background cleared" })
+        end
+    })
     
     -- Sliders for transparency
     local opacityGroup = interfaceTab:AddGroupbox({ Title = "Opacity & Effects", Column = "Left" })
