@@ -1,4 +1,4 @@
--- Unified Angeli UI Library v9.0
+-- Unified Angeli UI Library v8.1 (Fixed)
 local UserInputService = cloneref and cloneref(game:GetService('UserInputService')) or game:GetService('UserInputService')
 local TweenService = cloneref and cloneref(game:GetService('TweenService')) or game:GetService('TweenService')
 local HttpService = cloneref and cloneref(game:GetService('HttpService')) or game:GetService('HttpService')
@@ -43,50 +43,48 @@ local function convertTableToString(inputTable)
     return table.concat(inputTable, ", ")
 end
 
-local Connections = {}
-Connections.__index = Connections
-Connections.disconnect = function(self, connection)
-    if not self[connection] then return end
-    self[connection]:Disconnect()
-    self[connection] = nil
-end
-Connections.disconnect_all = function(self)
-    for _, value in pairs(self) do
-        if typeof(value) == 'function' then continue end
-        if typeof(value) == 'RBXScriptConnection' then
+local Connections = setmetatable({
+    disconnect = function(self, connection)
+        if not self[connection] then return end
+        self[connection]:Disconnect()
+        self[connection] = nil
+    end,
+    disconnect_all = function(self)
+        for _, value in self do
+            if typeof(value) == 'function' then continue end
             value:Disconnect()
         end
     end
-end
+}, Connections)
 
-local Config = {}
-Config.__index = Config
-Config.save = function(self, file_name, config)
-    local success, result = pcall(function()
-        local flags = HttpService:JSONEncode(config)
-        writefile('Fallen/'..file_name..'.json', flags)
-    end)
-    if not success then warn('failed to save config', result) end
-end
-Config.load = function(self, file_name, config)
-    local success, result = pcall(function()
-        if not isfile('Fallen/'..file_name..'.json') then
-            self:save(file_name, config)
-            return
+local Config = setmetatable({
+    save = function(self, file_name, config)
+        local success, result = pcall(function()
+            local flags = HttpService:JSONEncode(config)
+            writefile('Fallen/'..file_name..'.json', flags)
+        end)
+        if not success then warn('failed to save config', result) end
+    end,
+    load = function(self, file_name, config)
+        local success, result = pcall(function()
+            if not isfile('Fallen/'..file_name..'.json') then
+                self:save(file_name, config)
+                return
+            end
+            local flags = readfile('Fallen/'..file_name..'.json')
+            if not flags then
+                self:save(file_name, config)
+                return
+            end
+            return HttpService:JSONDecode(flags)
+        end)
+        if not success then warn('failed to load config', result) end
+        if not result then
+            result = { _flags = {}, _keybinds = {} }
         end
-        local flags = readfile('Fallen/'..file_name..'.json')
-        if not flags then
-            self:save(file_name, config)
-            return
-        end
-        return HttpService:JSONDecode(flags)
-    end)
-    if not success then warn('failed to load config', result) end
-    if not result then
-        result = { _flags = {}, _keybinds = {} }
+        return result
     end
-    return result
-end
+}, Config)
 
 local DefaultTheme = {
     Background = Color3.fromRGB(0, 0, 0),
@@ -129,42 +127,15 @@ local Library = {
     _flag_registry = {},
     _elements = {},
     _notif_side = "Right",
-    _notif_opacity = 0.0,
-    _container_gradient = nil,
-    _side_gradient = nil,
-    _ui_stroke = nil
+    _notif_opacity = 0.0
 }
 Library.__index = Library
 Library.Connections = Connections
 
 function Library.new()
-    local self = setmetatable({ _tab = 0, _queued_interface_tab = nil }, Library)
+    local self = setmetatable({ _tab = 0 }, Library)
     self:create_ui()
-    self:build_interface_tab()
-    
-    if self._queued_interface_tab then
-        local last_tab = nil
-        for _, obj in ipairs(self._ui.Container.Handler.Tabs:GetChildren()) do
-            if obj.Name == 'Tab' then
-                if last_tab and obj.LayoutOrder > last_tab.LayoutOrder then
-                    last_tab = obj
-                elseif not last_tab then
-                    last_tab = obj
-                end
-            end
-        end
-        
-        if last_tab and last_tab ~= self._queued_interface_tab then
-            local max_order = 0
-            for _, obj in ipairs(self._ui.Container.Handler.Tabs:GetChildren()) do
-                if obj.Name == 'Tab' and obj.LayoutOrder > max_order then
-                    max_order = obj.LayoutOrder
-                end
-            end
-            self._queued_interface_tab.LayoutOrder = max_order + 1
-        end
-    end
-    
+    -- User must call self:build_interface_tab() at the end of their script
     return self
 end
 
@@ -401,7 +372,6 @@ function Library:create_ui()
     ContainerGradient.Color = Theme.Gradient
     ContainerGradient.Rotation = 90
     ContainerGradient.Parent = Container
-    self._container_gradient = ContainerGradient
 
     local Background = Instance.new('ImageLabel')
     Background.Name = 'Background'
@@ -435,6 +405,7 @@ function Library:create_ui()
     Texture.TileSize = UDim2.new(0, 128, 0, 128)
     Texture.ZIndex = 0
     Texture.Parent = Container
+    table.insert(Library._elements, {obj = Texture, prop = "ImageColor3", tKey = "Background"})
 
     local SideBar = Instance.new("Frame")
     SideBar.Name = "GradientSide"
@@ -447,7 +418,6 @@ function Library:create_ui()
     SideGradient.Color = Theme.Gradient
     SideGradient.Rotation = 90
     SideGradient.Parent = SideBar
-    self._side_gradient = SideGradient
 
     local UICorner = Instance.new('UICorner')
     UICorner.CornerRadius = UDim.new(0, 10)
@@ -458,7 +428,6 @@ function Library:create_ui()
     UIStroke.Transparency = 0.58
     UIStroke.ApplyStrokeMode = Enum.ApplyStrokeMode.Border
     UIStroke.Parent = Container
-    self._ui_stroke = UIStroke
 
     local Handler = Instance.new('Frame')
     Handler.BackgroundTransparency = 1
@@ -902,10 +871,6 @@ function Library:create_ui()
             self:update_tabs(Tab, LeftSection, RightSection)
             self:update_sections(LeftSection, RightSection)
         end)
-
-        if title == 'Interface' then
-            self._queued_interface_tab = Tab
-        end
 
         function TabManager:create_module(settings)
             local LayoutOrderModule = 0;
@@ -1610,9 +1575,7 @@ function Library:create_ui()
                 end)
 
                 Library._flag_registry[settings.flag] = function(state)
-                    if Toggle and Toggle.Parent then
-                        CheckboxManager:change_state(state)
-                    end
+                    CheckboxManager:change_state(state)
                 end
 
                 return CheckboxManager
@@ -2068,7 +2031,7 @@ function Library:create_ui()
                 local Dropdown = Instance.new('TextButton')
                 Dropdown.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
                 Dropdown.TextColor3 = Color3.fromRGB(0, 0, 0)
-                Dropdown.BorderColor3 = Color3.fromRGB(0, 0,0)
+                Dropdown.BorderColor3 = Color3.fromRGB(0, 0, 0)
                 Dropdown.Text = ''
                 Dropdown.AutoButtonColor = false
                 Dropdown.BackgroundTransparency = 1
@@ -2470,11 +2433,11 @@ function Library:create_ui()
                 end
             end
         end
-        if key == "Gradient" then
-            self._container_gradient.Color = color
-            self._side_gradient.Color = color
+        if key == "Background" then
+            ContainerGradient.Color = ColorSequence.new(color)
+            SideGradient.Color = ColorSequence.new(color)
         elseif key == "GroupStroke" then
-            self._ui_stroke.Color = color
+            UIStroke.Color = color
         end
         self:SaveConfig()
     end
@@ -2617,7 +2580,7 @@ function Library:build_interface_tab()
         ['Preset 1']  = 'https://i.pinimg.com/736x/bd/12/a5/bd12a561f083960f6c1382c54f4df234.jpg',
         ['Preset 2']  = 'https://i.pinimg.com/736x/53/bd/84/53bd848d7ca43b57612117292d7ff979.jpg',
         ['Preset 3']  = 'https://i.pinimg.com/736x/db/26/c7/db26c713d48342bd15c0ee8f623e19c6.jpg',
-        ['Preset 4']  = 'https://i.pinimg.com/736x/dc/ad/10/dcad1026de88c854a17c6f4dd0b620c8.jpg',
+        ['Preset 4']  = 'https://i.pinimg.com/736x/dc/ad/10/dcad1026de88c85a417c6f4dd0b620c8.jpg',
         ['Preset 5']  = 'https://i.pinimg.com/736x/fe/88/90/fe88905bf7387c8827ffaf4a5aae7068.jpg',
         ['Preset 6']  = 'https://i.pinimg.com/736x/6a/82/5e/6a825e0e447466bad8295e9dc9b87486.jpg',
         ['Preset 7']  = 'https://i.pinimg.com/originals/10/ff/4f/10ff4f98a494e390e07b1a0e9eefa4be.gif',
@@ -2690,13 +2653,7 @@ function Library:build_interface_tab()
         flag        = 'Gui_Colors',
         description = 'Customize UI Colors',
         section     = 'left',
-        callback    = function(state) 
-            if state then
-                for k, v in pairs(Theme) do
-                    self:SetColor(k, v)
-                end
-            end
-        end,
+        callback    = function(state) end,
     })
 
     local Color_Module_Frame = find_module_frame('Appearance')
@@ -2858,9 +2815,7 @@ function Library:build_interface_tab()
             Field.BackgroundColor3 = Color3.fromHSV(hue, 1, 1)
             Cursor.Position        = UDim2.new(saturation, 0, 1 - brightness, 0)
             Hue_Knob.Position      = UDim2.new(hue, 0, 0.5, 0)
-            if Color_Swatches[Selected_Color_Target] then
-                Color_Swatches[Selected_Color_Target].BackgroundColor3 = color
-            end
+            Color_Swatches[Selected_Color_Target].BackgroundColor3 = color
 
             self:SetColor(Selected_Color_Target, color)
         end
@@ -2915,9 +2870,7 @@ function Library:build_interface_tab()
         local function close_popup()
             Popup.Visible = false
             for _, swatch in Color_Swatches do
-                if swatch.UIStroke then
-                    swatch.UIStroke.Transparency = 0.72
-                end
+                swatch.UIStroke.Transparency = 0.72
             end
         end
 
@@ -2930,9 +2883,7 @@ function Library:build_interface_tab()
             Selected_Color_Target = target
 
             for name, object in Color_Swatches do
-                if object.UIStroke then
-                    object.UIStroke.Transparency = name == target and 0 or 0.72
-                end
+                object.UIStroke.Transparency = name == target and 0 or 0.72
             end
 
             local scale      = Handler.AbsoluteSize.X / 752
@@ -3012,9 +2963,7 @@ function Library:build_interface_tab()
             for target, color in pairs(DefaultTheme) do
                 if typeof(color) == "Color3" then
                     self:SetColor(target, color)
-                    if Color_Swatches[target] then
-                        Color_Swatches[target].BackgroundColor3 = color
-                    end
+                    Color_Swatches[target].BackgroundColor3 = color
                 end
             end
         end)
@@ -3195,6 +3144,40 @@ function Library:build_interface_tab()
         callback = function(state) end,
     })
 
+    local notif_module = InterfaceTab:create_module({
+        title       = 'Notifications',
+        flag        = 'UI_Notifications',
+        description = 'Configure notification behavior',
+        section     = 'right',
+        callback    = function(state) end,
+    })
+
+    notif_module:create_dropdown({
+        title           = 'Side',
+        flag            = 'UI_Notif_Side',
+        options         = { 'Left', 'Right' },
+        multi_dropdown  = false,
+        maximum_options = 2,
+        callback        = function(value)
+            local side = (typeof(value) == "string" and value) or value.Name
+            Library._notif_side = side
+            UpdateNotificationPosition()
+        end,
+    })
+
+    notif_module:create_slider({
+        title         = 'Opacity',
+        flag          = 'UI_Notif_Opacity',
+        minimum_value = 0,
+        maximum_value = 100,
+        value         = 0,
+        round_number  = true,
+        callback      = function(value)
+            Library._notif_opacity = value / 100
+        end,
+    })
+
+    local OriginalSettings = {}
     local function FpsBooster(state)
         if state then
             pcall(function()
@@ -3209,17 +3192,21 @@ function Library:build_interface_tab()
 
             for _,v in ipairs(Lighting:GetChildren()) do
                 if v:IsA("PostEffect") or v:IsA("Atmosphere") or v:IsA("Sky") then
-                    v:Destroy()
+                    if OriginalSettings[v] == nil then OriginalSettings[v] = v.Enabled end
+                    v.Enabled = false
                 end
             end
 
             for _,obj in ipairs(Workspace:GetDescendants()) do
                 if obj:IsA("BasePart") then
+                    if OriginalSettings[obj] == nil then OriginalSettings[obj] = obj.CastShadow end
                     obj.CastShadow = false
                 elseif obj:IsA("Decal") or obj:IsA("Texture") then
-                    obj:Destroy()
+                    if OriginalSettings[obj] == nil then OriginalSettings[obj] = obj.Transparency end
+                    obj.Transparency = 1
                 elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") or obj:IsA("Explosion") or obj:IsA("Smoke") or obj:IsA("Fire") then
-                    obj:Destroy()
+                    if OriginalSettings[obj] == nil then OriginalSettings[obj] = obj.Enabled end
+                    obj.Enabled = false
                 end
             end
 
@@ -3234,7 +3221,24 @@ function Library:build_interface_tab()
                 Lighting.EnvironmentDiffuseScale = 1
                 Lighting.EnvironmentSpecularScale = 1
             end)
+            
+            for _,v in ipairs(Lighting:GetChildren()) do
+                if v:IsA("PostEffect") or v:IsA("Atmosphere") or v:IsA("Sky") then
+                    if OriginalSettings[v] ~= nil then v.Enabled = OriginalSettings[v] end
+                end
+            end
+
+            for _,obj in ipairs(Workspace:GetDescendants()) do
+                if obj:IsA("BasePart") then
+                    if OriginalSettings[obj] ~= nil then obj.CastShadow = OriginalSettings[obj] end
+                elseif obj:IsA("Decal") or obj:IsA("Texture") then
+                    if OriginalSettings[obj] ~= nil then obj.Transparency = OriginalSettings[obj] end
+                elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") or obj:IsA("Explosion") or obj:IsA("Smoke") or obj:IsA("Fire") then
+                    if OriginalSettings[obj] ~= nil then obj.Enabled = OriginalSettings[obj] end
+                end
+            end
             settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
+            table.clear(OriginalSettings)
         end
     end
 
@@ -3252,8 +3256,8 @@ function Library:build_interface_tab()
     FpsGui.Parent = CoreGui
 
     local FpsFrame = Instance.new("TextLabel")
-    FpsFrame.Size = UDim2.new(0, 200, 0, 50)
-    FpsFrame.Position = UDim2.new(0.5, -100, 0, 20)
+    FpsFrame.Size = UDim2.new(0, 220, 0, 35)
+    FpsFrame.Position = UDim2.new(0.5, -110, 0, 20)
     FpsFrame.BackgroundTransparency = 1
     FpsFrame.TextScaled = true
     FpsFrame.Font = Enum.Font.Arcade
@@ -3273,13 +3277,12 @@ function Library:build_interface_tab()
             local fps = frameCount
             frameCount = 0
             lastTime = currentTime
-
             FpsFrame.Text = string.format("FPS: %d", fps)
         end
     end)
 
     settings_module:create_checkbox({
-        title    = 'Show FPS (Text)',
+        title    = 'Show FPS',
         flag     = 'UI_Show_Fps_Text',
         callback = function(state)
             FpsGui.Enabled = state
@@ -3466,7 +3469,7 @@ function Library:build_interface_tab()
                     color = Color3.fromRGB(0, 255, 80)
                 elseif avgPing < 70 then
                     color = Color3.fromRGB(255, 255, 0)
-                elif avgPing < 120 then
+                elseif avgPing < 120 then
                     color = Color3.fromRGB(255, 180, 0)
                 else
                     color = Color3.fromRGB(255, 60, 60)
@@ -3492,7 +3495,7 @@ function Library:build_interface_tab()
     end)
 
     settings_module:create_checkbox({
-        title    = 'Show Ping (Graph)',
+        title    = 'Show Ping',
         flag     = 'UI_Show_Ping_Graph',
         callback = function(state)
             PingGraphGui.Enabled = state
@@ -3500,39 +3503,6 @@ function Library:build_interface_tab()
                 FpsGui.Enabled = false
                 self._flag_registry['UI_Show_Fps_Text'](false)
             end
-        end,
-    })
-
-    local notif_module = InterfaceTab:create_module({
-        title       = 'Notifications',
-        flag        = 'UI_Notifications',
-        description = 'Configure notification behavior',
-        section     = 'right',
-        callback    = function(state) end,
-    })
-
-    notif_module:create_dropdown({
-        title           = 'Side',
-        flag            = 'UI_Notif_Side',
-        options         = { 'Left', 'Right' },
-        multi_dropdown  = false,
-        maximum_options = 2,
-        callback        = function(value)
-            local side = (typeof(value) == "string" and value) or value.Name
-            Library._notif_side = side
-            UpdateNotificationPosition()
-        end,
-    })
-
-    notif_module:create_slider({
-        title         = 'Opacity',
-        flag          = 'UI_Notif_Opacity',
-        minimum_value = 0,
-        maximum_value = 100,
-        value         = 0,
-        round_number  = true,
-        callback      = function(value)
-            Library._notif_opacity = value / 100
         end,
     })
 end
