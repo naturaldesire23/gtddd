@@ -1,4 +1,4 @@
--- Unified Angeli UI Library v8.1 (Fixed)
+-- Unified Angeli UI Library v8.2 (Atmosphere Fix)
 local UserInputService = cloneref and cloneref(game:GetService('UserInputService')) or game:GetService('UserInputService')
 local TweenService = cloneref and cloneref(game:GetService('TweenService')) or game:GetService('TweenService')
 local HttpService = cloneref and cloneref(game:GetService('HttpService')) or game:GetService('HttpService')
@@ -135,7 +135,6 @@ Library.Connections = Connections
 function Library.new()
     local self = setmetatable({ _tab = 0 }, Library)
     self:create_ui()
-    -- User must call self:build_interface_tab() at the end of their script
     return self
 end
 
@@ -993,7 +992,7 @@ function Library:create_ui()
 
                 local trackHeight = math.max(ModuleScrollTrack.AbsoluteSize.Y, 1)
                 local thumbMin = math.min(80, trackHeight)
-                local thumbMax = math.min(math.max(thumbMin, 112), trackHeight)
+                local thumbMax = math.min(math.max(thumbMin, 112), trackHeight
                 local thumbHeight = math.clamp(trackHeight * (viewportHeight / canvasHeight), thumbMin, thumbMax)
                 local maxCanvasPosition = math.max(canvasHeight - viewportHeight, 1)
                 local maxThumbPosition = math.max(trackHeight - thumbHeight, 0)
@@ -3191,9 +3190,15 @@ function Library:build_interface_tab()
             end)
 
             for _,v in ipairs(Lighting:GetChildren()) do
-                if v:IsA("PostEffect") or v:IsA("Atmosphere") or v:IsA("Sky") then
+                if v:IsA("PostEffect") then
                     if OriginalSettings[v] == nil then OriginalSettings[v] = v.Enabled end
                     v.Enabled = false
+                elseif v:IsA("Atmosphere") then
+                    if OriginalSettings[v] == nil then OriginalSettings[v] = v.Density end
+                    v.Density = 0
+                elseif v:IsA("Sky") then
+                    if OriginalSettings[v] == nil then OriginalSettings[v] = v.Parent end
+                    v.Parent = nil
                 end
             end
 
@@ -3204,7 +3209,7 @@ function Library:build_interface_tab()
                 elseif obj:IsA("Decal") or obj:IsA("Texture") then
                     if OriginalSettings[obj] == nil then OriginalSettings[obj] = obj.Transparency end
                     obj.Transparency = 1
-                elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") or obj:IsA("Explosion") or obj:IsA("Smoke") or obj:IsA("Fire") then
+                elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") or obj:IsA("Smoke") or obj:IsA("Fire") then
                     if OriginalSettings[obj] == nil then OriginalSettings[obj] = obj.Enabled end
                     obj.Enabled = false
                 end
@@ -3223,8 +3228,10 @@ function Library:build_interface_tab()
             end)
             
             for _,v in ipairs(Lighting:GetChildren()) do
-                if v:IsA("PostEffect") or v:IsA("Atmosphere") or v:IsA("Sky") then
+                if v:IsA("PostEffect") then
                     if OriginalSettings[v] ~= nil then v.Enabled = OriginalSettings[v] end
+                elseif v:IsA("Atmosphere") then
+                    if OriginalSettings[v] ~= nil then v.Density = OriginalSettings[v] end
                 end
             end
 
@@ -3233,10 +3240,17 @@ function Library:build_interface_tab()
                     if OriginalSettings[obj] ~= nil then obj.CastShadow = OriginalSettings[obj] end
                 elseif obj:IsA("Decal") or obj:IsA("Texture") then
                     if OriginalSettings[obj] ~= nil then obj.Transparency = OriginalSettings[obj] end
-                elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") or obj:IsA("Explosion") or obj:IsA("Smoke") or obj:IsA("Fire") then
+                elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") or obj:IsA("Smoke") or obj:IsA("Fire") then
                     if OriginalSettings[obj] ~= nil then obj.Enabled = OriginalSettings[obj] end
                 end
             end
+
+            for obj, parent in pairs(OriginalSettings) do
+                if typeof(obj) == "Instance" and obj:IsA("Sky") then
+                    pcall(function() obj.Parent = parent end)
+                end
+            end
+            
             settings().Rendering.QualityLevel = Enum.QualityLevel.Automatic
             table.clear(OriginalSettings)
         end
