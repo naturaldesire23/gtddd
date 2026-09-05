@@ -1,4 +1,4 @@
--- Unified Angeli UI Library v8.2 (Atmosphere Fix)
+-- Unified Angeli UI Library v8.3 (Syntax & Initialization Fix)
 local UserInputService = cloneref and cloneref(game:GetService('UserInputService')) or game:GetService('UserInputService')
 local TweenService = cloneref and cloneref(game:GetService('TweenService')) or game:GetService('TweenService')
 local HttpService = cloneref and cloneref(game:GetService('HttpService')) or game:GetService('HttpService')
@@ -992,7 +992,7 @@ function Library:create_ui()
 
                 local trackHeight = math.max(ModuleScrollTrack.AbsoluteSize.Y, 1)
                 local thumbMin = math.min(80, trackHeight)
-                local thumbMax = math.min(math.max(thumbMin, 112), trackHeight
+                local thumbMax = math.min(math.max(thumbMin, 112), trackHeight)
                 local thumbHeight = math.clamp(trackHeight * (viewportHeight / canvasHeight), thumbMin, thumbMax)
                 local maxCanvasPosition = math.max(canvasHeight - viewportHeight, 1)
                 local maxThumbPosition = math.max(trackHeight - thumbHeight, 0)
@@ -3209,7 +3209,7 @@ function Library:build_interface_tab()
                 elseif obj:IsA("Decal") or obj:IsA("Texture") then
                     if OriginalSettings[obj] == nil then OriginalSettings[obj] = obj.Transparency end
                     obj.Transparency = 1
-                elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") or obj:IsA("Smoke") or obj:IsA("Fire") then
+                elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") or obj:IsA("Explosion") or obj:IsA("Smoke") or obj:IsA("Fire") then
                     if OriginalSettings[obj] == nil then OriginalSettings[obj] = obj.Enabled end
                     obj.Enabled = false
                 end
@@ -3240,7 +3240,7 @@ function Library:build_interface_tab()
                     if OriginalSettings[obj] ~= nil then obj.CastShadow = OriginalSettings[obj] end
                 elseif obj:IsA("Decal") or obj:IsA("Texture") then
                     if OriginalSettings[obj] ~= nil then obj.Transparency = OriginalSettings[obj] end
-                elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") or obj:IsA("Smoke") or obj:IsA("Fire") then
+                elseif obj:IsA("ParticleEmitter") or obj:IsA("Trail") or obj:IsA("Beam") or obj:IsA("Explosion") or obj:IsA("Smoke") or obj:IsA("Fire") then
                     if OriginalSettings[obj] ~= nil then obj.Enabled = OriginalSettings[obj] end
                 end
             end
@@ -3294,18 +3294,6 @@ function Library:build_interface_tab()
             FpsFrame.Text = string.format("FPS: %d", fps)
         end
     end)
-
-    settings_module:create_checkbox({
-        title    = 'Show FPS',
-        flag     = 'UI_Show_Fps_Text',
-        callback = function(state)
-            FpsGui.Enabled = state
-            if state then
-                PingGraphGui.Enabled = false
-                self._flag_registry['UI_Show_Ping_Graph'](false)
-            end
-        end,
-    })
 
     local PingGraphGui = Instance.new("ScreenGui")
     PingGraphGui.Name = "PingGraph"
@@ -3507,6 +3495,18 @@ function Library:build_interface_tab()
             UpdateGraph()
         end
     end)
+
+    settings_module:create_checkbox({
+        title    = 'Show FPS',
+        flag     = 'UI_Show_Fps_Text',
+        callback = function(state)
+            FpsGui.Enabled = state
+            if state then
+                PingGraphGui.Enabled = false
+                self._flag_registry['UI_Show_Ping_Graph'](false)
+            end
+        end,
+    })
 
     settings_module:create_checkbox({
         title    = 'Show Ping',
