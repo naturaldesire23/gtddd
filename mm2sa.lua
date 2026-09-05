@@ -1,4 +1,4 @@
-
+-- Unified Angeli UI Library v8.5 (Overlay Drag Fix)
 local UserInputService = cloneref and cloneref(game:GetService('UserInputService')) or game:GetService('UserInputService')
 local TweenService = cloneref and cloneref(game:GetService('TweenService')) or game:GetService('TweenService')
 local HttpService = cloneref and cloneref(game:GetService('HttpService')) or game:GetService('HttpService')
@@ -3343,7 +3343,7 @@ function Library:build_interface_tab()
         BarGradient.Rotation = 90
         Bars[index] = Bar
     end
-    
+
     local FpsPanel = Instance.new("Frame", OverlayGui)
     FpsPanel.Size = UDim2.new(0, 140, 0, 34)
     FpsPanel.Position = UDim2.new(0, 20, 0.5, 44)
@@ -3384,6 +3384,48 @@ function Library:build_interface_tab()
     FpsLabel.Text = "FPS"
     FpsLabel.TextColor3 = Color3.fromRGB(178, 178, 185)
     FpsLabel.TextSize = 12
+
+    -- Drag logic for GraphPanel
+    local graphDragging, graphDragStart, graphStartPos = false, nil, nil
+    GraphPanel.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            graphDragging = true
+            graphDragStart = input.Position
+            graphStartPos = GraphPanel.Position
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if graphDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - graphDragStart
+            GraphPanel.Position = UDim2.new(graphStartPos.X.Scale, graphStartPos.X.Offset + delta.X, graphStartPos.Y.Scale, graphStartPos.Y.Offset + delta.Y)
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            graphDragging = false
+        end
+    end)
+
+    -- Drag logic for FpsPanel
+    local fpsDragging, fpsDragStart, fpsStartPos = false, nil, nil
+    FpsPanel.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            fpsDragging = true
+            fpsDragStart = input.Position
+            fpsStartPos = FpsPanel.Position
+        end
+    end)
+    UserInputService.InputChanged:Connect(function(input)
+        if fpsDragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+            local delta = input.Position - fpsDragStart
+            FpsPanel.Position = UDim2.new(fpsStartPos.X.Scale, fpsStartPos.X.Offset + delta.X, fpsStartPos.Y.Scale, fpsStartPos.Y.Offset + delta.Y)
+        end
+    end)
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+            fpsDragging = false
+        end
+    end)
 
     local frameCount, elapsed, updateElapsed = 0, 0, 0
     local player = game:GetService("Players").LocalPlayer
