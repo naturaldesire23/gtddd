@@ -43,48 +43,50 @@ local function convertTableToString(inputTable)
     return table.concat(inputTable, ", ")
 end
 
-local Connections = setmetatable({
-    disconnect = function(self, connection)
-        if not self[connection] then return end
-        self[connection]:Disconnect()
-        self[connection] = nil
-    end,
-    disconnect_all = function(self)
-        for _, value in self do
-            if typeof(value) == 'function' then continue end
+local Connections = {}
+Connections.__index = Connections
+Connections.disconnect = function(self, connection)
+    if not self[connection] then return end
+    self[connection]:Disconnect()
+    self[connection] = nil
+end
+Connections.disconnect_all = function(self)
+    for _, value in pairs(self) do
+        if typeof(value) == 'function' then continue end
+        if typeof(value) == 'RBXScriptConnection' then
             value:Disconnect()
         end
     end
-}, Connections)
+end
 
-local Config = setmetatable({
-    save = function(self, file_name, config)
-        local success, result = pcall(function()
-            local flags = HttpService:JSONEncode(config)
-            writefile('Fallen/'..file_name..'.json', flags)
-        end)
-        if not success then warn('failed to save config', result) end
-    end,
-    load = function(self, file_name, config)
-        local success, result = pcall(function()
-            if not isfile('Fallen/'..file_name..'.json') then
-                self:save(file_name, config)
-                return
-            end
-            local flags = readfile('Fallen/'..file_name..'.json')
-            if not flags then
-                self:save(file_name, config)
-                return
-            end
-            return HttpService:JSONDecode(flags)
-        end)
-        if not success then warn('failed to load config', result) end
-        if not result then
-            result = { _flags = {}, _keybinds = {} }
+local Config = {}
+Config.__index = Config
+Config.save = function(self, file_name, config)
+    local success, result = pcall(function()
+        local flags = HttpService:JSONEncode(config)
+        writefile('Fallen/'..file_name..'.json', flags)
+    end)
+    if not success then warn('failed to save config', result) end
+end
+Config.load = function(self, file_name, config)
+    local success, result = pcall(function()
+        if not isfile('Fallen/'..file_name..'.json') then
+            self:save(file_name, config)
+            return
         end
-        return result
+        local flags = readfile('Fallen/'..file_name..'.json')
+        if not flags then
+            self:save(file_name, config)
+            return
+        end
+        return HttpService:JSONDecode(flags)
+    end)
+    if not success then warn('failed to load config', result) end
+    if not result then
+        result = { _flags = {}, _keybinds = {} }
     end
-}, Config)
+    return result
+end
 
 local DefaultTheme = {
     Background = Color3.fromRGB(0, 0, 0),
