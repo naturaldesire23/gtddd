@@ -3464,7 +3464,7 @@ function Library:build_interface_tab()
                     color = Color3.fromRGB(0, 255, 80)
                 elseif avgPing < 70 then
                     color = Color3.fromRGB(255, 255, 0)
-                elseif avgPing < 120 then
+                elif avgPing < 120 then
                     color = Color3.fromRGB(255, 180, 0)
                 else
                     color = Color3.fromRGB(255, 60, 60)
