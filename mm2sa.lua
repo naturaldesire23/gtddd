@@ -1,4 +1,4 @@
--- Unified Angeli UI Library v8.3 (Syntax & Initialization Fix)
+
 local UserInputService = cloneref and cloneref(game:GetService('UserInputService')) or game:GetService('UserInputService')
 local TweenService = cloneref and cloneref(game:GetService('TweenService')) or game:GetService('TweenService')
 local HttpService = cloneref and cloneref(game:GetService('HttpService')) or game:GetService('HttpService')
@@ -127,7 +127,8 @@ local Library = {
     _flag_registry = {},
     _elements = {},
     _notif_side = "Right",
-    _notif_opacity = 0.0
+    _notif_opacity = 0.0,
+    _keybind_list = {}
 }
 Library.__index = Library
 Library.Connections = Connections
@@ -161,12 +162,12 @@ UIListLayout_Notif.Parent = NotificationContainer
 
 local function UpdateNotificationPosition()
     if Library._notif_side == "Left" then
-        NotificationContainer.AnchorPoint = Vector2.new(0, 0)
-        NotificationContainer.Position = UDim2.new(0, 22, 0, 22)
-        UIListLayout_Notif.VerticalAlignment = Enum.VerticalAlignment.Top
-    else
         NotificationContainer.AnchorPoint = Vector2.new(0, 1)
         NotificationContainer.Position = UDim2.new(0, 22, 1, -22)
+        UIListLayout_Notif.VerticalAlignment = Enum.VerticalAlignment.Bottom
+    else
+        NotificationContainer.AnchorPoint = Vector2.new(1, 1)
+        NotificationContainer.Position = UDim2.new(1, -22, 1, -22)
         UIListLayout_Notif.VerticalAlignment = Enum.VerticalAlignment.Bottom
     end
 end
@@ -1243,6 +1244,7 @@ function Library:create_ui()
 
             function ModuleManager:connect_keybind()
                 if not Library._config._keybinds[settings.flag] then return end
+                Library._keybind_list[settings.flag] = settings.title or "Module"
                 Connections[settings.flag..'_keybind'] = UserInputService.InputBegan:Connect(function(input, process)
                     if process then return end
                     if tostring(input.KeyCode) ~= Library._config._keybinds[settings.flag] then return end
@@ -1338,6 +1340,7 @@ function Library:create_ui()
                     if input.KeyCode == Enum.KeyCode.Backspace then
                         ModuleManager:scale_keybind(true)
                         Library._config._keybinds[settings.flag] = nil
+                        Library._keybind_list[settings.flag] = nil
                         TextLabel.Text = 'None'
                         cancel_choose()
                         Config:save(game.GameId, Library._config)
@@ -1345,6 +1348,7 @@ function Library:create_ui()
                     end
 
                     Library._config._keybinds[settings.flag] = tostring(input.KeyCode)
+                    Library._keybind_list[settings.flag] = settings.title or "Module"
 
                     if Connections[settings.flag..'_keybind'] then
                         Connections[settings.flag..'_keybind']:Disconnect()
@@ -1544,9 +1548,11 @@ function Library:create_ui()
                         
                         if input.KeyCode == Enum.KeyCode.Backspace then
                             Library._config._keybinds[settings.flag] = nil
+                            Library._keybind_list[settings.flag] = nil
                             KeybindLabel.Text = "..."
                         else
                             Library._config._keybinds[settings.flag] = tostring(input.KeyCode)
+                            Library._keybind_list[settings.flag] = settings.title or "Toggle"
                             KeybindLabel.Text = string.gsub(tostring(input.KeyCode), "Enum.KeyCode.", "")
                         end
                         cancel_choose()
@@ -1707,9 +1713,11 @@ function Library:create_ui()
 
                         if input.KeyCode == Enum.KeyCode.Backspace then
                             Library._config._keybinds[settings.flag] = nil
+                            Library._keybind_list[settings.flag] = nil
                             KeybindLabel.Text = '...'
                         else
                             Library._config._keybinds[settings.flag] = tostring(input.KeyCode)
+                            Library._keybind_list[settings.flag] = settings.title or "Keybind"
                             KeybindLabel.Text = string.gsub(tostring(input.KeyCode), 'Enum.KeyCode.', '')
                         end
 
@@ -3264,258 +3272,370 @@ function Library:build_interface_tab()
         end,
     })
 
-    local FpsGui = Instance.new("ScreenGui")
-    FpsGui.Name = "FpsDisplay"
-    FpsGui.ResetOnSpawn = false
-    FpsGui.Parent = CoreGui
+    -- Telemetry Overlay Setup
+    local StatsOverlayState = {samples={}, maxSamples=24, ping=0, fps=0}
+    
+    local OverlayGui = Instance.new("ScreenGui")
+    OverlayGui.Name = "TelemetryOverlay"
+    OverlayGui.ResetOnSpawn = false
+    OverlayGui.IgnoreGuiInset = true
+    OverlayGui.DisplayOrder = 99
+    OverlayGui.Parent = CoreGui
+    
+    local GraphPanel = Instance.new("Frame")
+    GraphPanel.Size = UDim2.new(0, 184, 0, 76)
+    GraphPanel.Position = UDim2.new(0, 20, 0.5, -38)
+    GraphPanel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    GraphPanel.BorderSizePixel = 0
+    GraphPanel.Active = true
+    GraphPanel.Visible = false
+    GraphPanel.Parent = OverlayGui
+    
+    Instance.new("UICorner", GraphPanel).CornerRadius = UDim.new(0, 7)
+    
+    local GraphStroke = Instance.new("UIStroke", GraphPanel)
+    GraphStroke.Color = Color3.fromRGB(255, 255, 255)
+    GraphStroke.Transparency = 0.88
+    GraphStroke.Thickness = 1
+    
+    local GraphPanelGradient = Instance.new("UIGradient", GraphPanel)
+    GraphPanelGradient.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(145, 145, 145)),
+        ColorSequenceKeypoint.new(0.3, Color3.fromRGB(14, 14, 16)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 0, 0))
+    }
+    GraphPanelGradient.Rotation = 90
+    
+    local PingValue = Instance.new("TextLabel", GraphPanel)
+    PingValue.Size = UDim2.new(0, 82, 0, 21)
+    PingValue.Position = UDim2.new(1, -91, 0, 4)
+    PingValue.BackgroundTransparency = 1
+    PingValue.Font = Enum.Font.GothamBold
+    PingValue.Text = "0 ms"
+    PingValue.TextColor3 = Color3.fromRGB(238, 238, 242)
+    PingValue.TextSize = 15
+    PingValue.TextXAlignment = Enum.TextXAlignment.Right
+    
+    local GraphArea = Instance.new("Frame", GraphPanel)
+    GraphArea.Size = UDim2.new(1, -18, 0, 38)
+    GraphArea.Position = UDim2.new(0, 9, 0, 32)
+    GraphArea.BackgroundTransparency = 1
+    GraphArea.BorderSizePixel = 0
+    GraphArea.ClipsDescendants = true
+    
+    local Bars = {}
+    for index = 1, StatsOverlayState.maxSamples do
+        local Bar = Instance.new("Frame", GraphArea)
+        Bar.AnchorPoint = Vector2.new(0, 1)
+        Bar.Size = UDim2.new(0, 7, 0, 5)
+        Bar.Position = UDim2.new(0, (index-1)*7, 1, -4)
+        Bar.BackgroundColor3 = Color3.fromRGB(126, 203, 255)
+        Bar.BorderSizePixel = 0
+        Bar.ZIndex = 2
+        
+        local BarGradient = Instance.new("UIGradient", Bar)
+        BarGradient.Color = ColorSequence.new{
+            ColorSequenceKeypoint.new(0, Color3.fromRGB(205, 237, 255)),
+            ColorSequenceKeypoint.new(0.3, Color3.fromRGB(151, 216, 255)),
+            ColorSequenceKeypoint.new(0.72, Color3.fromRGB(92, 181, 242)),
+            ColorSequenceKeypoint.new(1, Color3.fromRGB(48, 122, 190))
+        }
+        BarGradient.Rotation = 90
+        Bars[index] = Bar
+    end
+    
+    local FpsPanel = Instance.new("Frame", OverlayGui)
+    FpsPanel.Size = UDim2.new(0, 140, 0, 34)
+    FpsPanel.Position = UDim2.new(0, 20, 0.5, 44)
+    FpsPanel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+    FpsPanel.BorderSizePixel = 0
+    FpsPanel.Active = true
+    FpsPanel.Visible = false
+    Instance.new("UICorner", FpsPanel).CornerRadius = UDim.new(0, 12)
+    
+    local FpsStroke = Instance.new("UIStroke", FpsPanel)
+    FpsStroke.Color = Color3.fromRGB(255, 255, 255)
+    FpsStroke.Transparency = 0.86
+    FpsStroke.Thickness = 1
+    
+    local FpsPanelGradient = Instance.new("UIGradient", FpsPanel)
+    FpsPanelGradient.Color = ColorSequence.new{
+        ColorSequenceKeypoint.new(0, Color3.fromRGB(145, 145, 145)),
+        ColorSequenceKeypoint.new(0.3, Color3.fromRGB(14, 14, 16)),
+        ColorSequenceKeypoint.new(1, Color3.fromRGB(0, 0, 0))
+    }
+    FpsPanelGradient.Rotation = 90
+    
+    local FpsValue = Instance.new("TextLabel", FpsPanel)
+    FpsValue.Size = UDim2.new(0, 68, 1, 0)
+    FpsValue.Position = UDim2.new(0, 14, 0, 0)
+    FpsValue.BackgroundTransparency = 1
+    FpsValue.Font = Enum.Font.GothamBold
+    FpsValue.Text = "0"
+    FpsValue.TextColor3 = Color3.fromRGB(255, 255, 255)
+    FpsValue.TextSize = 24
+    FpsValue.TextXAlignment = Enum.TextXAlignment.Left
+    
+    local FpsLabel = Instance.new("TextLabel", FpsPanel)
+    FpsLabel.Size = UDim2.new(0, 48, 1, 0)
+    FpsLabel.Position = UDim2.new(1, -58, 0, 0)
+    FpsLabel.BackgroundTransparency = 1
+    FpsLabel.Font = Enum.Font.GothamBold
+    FpsLabel.Text = "FPS"
+    FpsLabel.TextColor3 = Color3.fromRGB(178, 178, 185)
+    FpsLabel.TextSize = 12
 
-    local FpsFrame = Instance.new("TextLabel")
-    FpsFrame.Size = UDim2.new(0, 220, 0, 35)
-    FpsFrame.Position = UDim2.new(0.5, -110, 0, 20)
-    FpsFrame.BackgroundTransparency = 1
-    FpsFrame.TextScaled = true
-    FpsFrame.Font = Enum.Font.Arcade
-    FpsFrame.TextColor3 = Color3.new(1, 1, 1)
-    FpsFrame.Parent = FpsGui
-    FpsFrame.Active = true
-    FpsFrame.Draggable = true
-    FpsGui.Enabled = false
+    local frameCount, elapsed, updateElapsed = 0, 0, 0
+    local player = game:GetService("Players").LocalPlayer
 
-    local lastTime = tick()
-    local frameCount = 0
-
-    RunService.RenderStepped:Connect(function()
+    RunService.RenderStepped:Connect(function(dt)
         frameCount = frameCount + 1
-        local currentTime = tick()
-        if (currentTime - lastTime) >= 1 then
-            local fps = frameCount
-            frameCount = 0
-            lastTime = currentTime
-            FpsFrame.Text = string.format("FPS: %d", fps)
-        end
-    end)
-
-    local PingGraphGui = Instance.new("ScreenGui")
-    PingGraphGui.Name = "PingGraph"
-    PingGraphGui.ResetOnSpawn = false
-    PingGraphGui.IgnoreGuiInset = true
-    PingGraphGui.Parent = CoreGui
-    PingGraphGui.Enabled = false
-
-    local GRAPH_WIDTH = 200
-    local GRAPH_HEIGHT = 35
-    local MAX_POINTS = 60
-    local UPDATE_INTERVAL = 0.2
-    local SMOOTH_SAMPLES = 3
-
-    local PingContainer = Instance.new("Frame")
-    PingContainer.Size = UDim2.new(0, GRAPH_WIDTH + 12, 0, GRAPH_HEIGHT + 34)
-    PingContainer.Position = UDim2.new(0, 15, 0, 15)
-    PingContainer.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    PingContainer.BackgroundTransparency = 0.15
-    PingContainer.BorderSizePixel = 0
-    PingContainer.Active = true
-    PingContainer.Draggable = true
-    PingContainer.ClipsDescendants = true
-    PingContainer.Parent = PingGraphGui
-
-    local PingCorner = Instance.new("UICorner")
-    PingCorner.CornerRadius = UDim.new(0, 6)
-    PingCorner.Parent = PingContainer
-
-    local TopBar = Instance.new("Frame")
-    TopBar.Size = UDim2.new(1, 0, 0, 20)
-    TopBar.Position = UDim2.new(0, 0, 0, 0)
-    TopBar.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
-    TopBar.BackgroundTransparency = 0.1
-    TopBar.BorderSizePixel = 0
-    TopBar.Parent = PingContainer
-
-    local TopBarCorner = Instance.new("UICorner")
-    TopBarCorner.CornerRadius = UDim.new(0, 6)
-    TopBarCorner.Parent = TopBar
-
-    local PingTitle = Instance.new("TextLabel")
-    PingTitle.Size = UDim2.new(1, 0, 0, 20)
-    PingTitle.Position = UDim2.new(0, 0, 0, 0)
-    PingTitle.BackgroundTransparency = 1
-    PingTitle.FontFace = Font.new("rbxasset://fonts/families/SFPro.json", Enum.FontWeight.Bold, Enum.FontStyle.Normal)
-    PingTitle.TextColor3 = Color3.fromRGB(255, 255, 255)
-    PingTitle.TextSize = 10
-    PingTitle.TextXAlignment = Enum.TextXAlignment.Center
-    PingTitle.TextYAlignment = Enum.TextYAlignment.Center
-    PingTitle.Text = "PING: --  |  AVG: --  |  MAX: --"
-    PingTitle.TextStrokeTransparency = 0.4
-    PingTitle.TextStrokeColor3 = Color3.fromRGB(0, 0, 0)
-    PingTitle.Parent = PingContainer
-
-    local Canvas = Instance.new("Frame")
-    Canvas.Size = UDim2.new(0, GRAPH_WIDTH, 0, GRAPH_HEIGHT)
-    Canvas.Position = UDim2.new(0, 4, 0, 22)
-    Canvas.BackgroundTransparency = 1
-    Canvas.BorderSizePixel = 0
-    Canvas.ClipsDescendants = true
-    Canvas.Parent = PingContainer
-
-    for i = 0, 2 do
-        local line = Instance.new("Frame")
-        line.Size = UDim2.new(1, 0, 0, 0.5)
-        line.Position = UDim2.new(0, 0, 0, i * (GRAPH_HEIGHT / 2))
-        line.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-        line.BackgroundTransparency = 0.95
-        line.BorderSizePixel = 0
-        line.Parent = Canvas
-    end
-
-    local GraphLines = {}
-    for i = 1, MAX_POINTS - 1 do
-        local line = Instance.new("Frame")
-        line.Size = UDim2.new(0, 4, 0, 2)
-        line.BackgroundColor3 = Color3.fromRGB(0, 255, 100)
-        line.BorderSizePixel = 0
-        line.Visible = false
-        line.Parent = Canvas
-        table.insert(GraphLines, line)
-    end
-
-    local Stats = { min = math.huge, max = 0, sum = 0, count = 0, avg = 0, current = 0 }
-    local pingBuffer = {}
-    local lastUpdate = 0
-    local maxPingScale = 80
-    local PingHistory = {}
-    local RawPingCache = 0
-    local PingCacheTime = 0
-
-    local function GetRawPing()
-        local now = tick()
-        if now - PingCacheTime < 0.05 then
-            return RawPingCache
-        end
-        local ok, val = pcall(function()
-            return game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()
-        end)
-        if ok and type(val) == "number" and val > 0 then
-            RawPingCache = val
-            PingCacheTime = now
-            return val
-        end
-        return RawPingCache
-    end
-
-    local function GetSmoothPing()
-        local raw = GetRawPing()
-        table.insert(PingHistory, raw)
-        if #PingHistory > SMOOTH_SAMPLES then
-            table.remove(PingHistory, 1)
-        end
-        local sum = 0
-        for _, v in ipairs(PingHistory) do
-            sum = sum + v
-        end
-        return #PingHistory > 0 and sum / #PingHistory or raw
-    end
-
-    task.spawn(function()
-        while true do
-            GetSmoothPing()
-            task.wait(1)
-        end
-    end)
-
-    local function UpdateGraph()
-        local currentPing = GetSmoothPing()
-        Stats.current = currentPing
+        elapsed = elapsed + dt
+        updateElapsed = updateElapsed + dt
         
-        if currentPing > 0 then
-            if currentPing < Stats.min then Stats.min = currentPing end
-            if currentPing > Stats.max then Stats.max = currentPing end
-            Stats.sum = Stats.sum + currentPing
-            Stats.count = Stats.count + 1
-            Stats.avg = Stats.count > 0 and Stats.sum / Stats.count or 0
-        end
-        
-        PingTitle.Text = string.format("PING: %d  |  AVG: %.0f  |  MAX: %.0f", math.round(currentPing), Stats.avg, Stats.max)
-        
-        table.insert(pingBuffer, currentPing)
-        if #pingBuffer > MAX_POINTS then
-            table.remove(pingBuffer, 1)
-        end
-        
-        local localMax = 20
-        for _, v in ipairs(pingBuffer) do
-            if v > localMax then localMax = v end
-        end
-        localMax = localMax * 1.15
-        localMax = math.max(localMax, 30)
-        maxPingScale = maxPingScale + (localMax - maxPingScale) * 0.1
-        maxPingScale = math.max(maxPingScale, 25)
-        
-        local count = #pingBuffer
-        
-        for i = 1, MAX_POINTS - 1 do
-            local line = GraphLines[i]
-            if i < count then
-                local ping1 = pingBuffer[i] or 0
-                local ping2 = pingBuffer[i + 1] or 0
-                local norm1 = math.clamp(ping1 / maxPingScale, 0, 1)
-                local norm2 = math.clamp(ping2 / maxPingScale, 0, 1)
-                local x1 = (i - 1) * (GRAPH_WIDTH / MAX_POINTS)
-                local x2 = i * (GRAPH_WIDTH / MAX_POINTS)
-                local y1 = GRAPH_HEIGHT - (norm1 * (GRAPH_HEIGHT - 2)) - 1
-                local y2 = GRAPH_HEIGHT - (norm2 * (GRAPH_HEIGHT - 2)) - 1
-                local angle = math.atan2(y2 - y1, x2 - x1)
-                local length = math.sqrt((x2 - x1)^2 + (y2 - y1)^2)
-                local avgPing = (ping1 + ping2) / 2
-                local color
-                if avgPing < 40 then
-                    color = Color3.fromRGB(0, 255, 80)
-                elseif avgPing < 70 then
-                    color = Color3.fromRGB(255, 255, 0)
-                elseif avgPing < 120 then
-                    color = Color3.fromRGB(255, 180, 0)
-                else
-                    color = Color3.fromRGB(255, 60, 60)
-                end
-                line.Size = UDim2.new(0, length, 0, 2)
-                line.Position = UDim2.new(0, x1, 0, y1 - 1)
-                line.Rotation = math.deg(angle)
-                line.BackgroundColor3 = color
-                line.Visible = true
-            else
-                line.Visible = false
+        if elapsed >= 0.5 then
+            StatsOverlayState.fps = math.round(frameCount/elapsed)
+            frameCount = 0 
+            elapsed = 0
+            if FpsPanel.Visible then
+                FpsValue.Text = tostring(StatsOverlayState.fps)
             end
         end
-    end
-
-    RunService.RenderStepped:Connect(function(delta)
-        if not PingGraphGui.Enabled then return end
-        lastUpdate = lastUpdate + delta
-        if lastUpdate >= UPDATE_INTERVAL then
-            lastUpdate = 0
-            UpdateGraph()
+        
+        if updateElapsed >= 0.5 then
+            StatsOverlayState.ping = math.round(player:GetNetworkPing()*1000)
+            if GraphPanel.Visible then
+                PingValue.Text = tostring(StatsOverlayState.ping).." ms"
+                table.insert(StatsOverlayState.samples, StatsOverlayState.ping)
+                if #StatsOverlayState.samples > StatsOverlayState.maxSamples then 
+                    table.remove(StatsOverlayState.samples, 1) 
+                end
+                for index, bar in ipairs(Bars) do
+                    local sample = StatsOverlayState.samples[index] or 0
+                    local height = math.clamp(5 + sample/38, 5, 10)
+                    bar.Size = UDim2.new(0, 7, 0, height)
+                end
+            end
+            updateElapsed = 0
         end
     end)
 
     settings_module:create_checkbox({
         title    = 'Show FPS',
-        flag     = 'UI_Show_Fps_Text',
+        flag     = 'UI_Show_Fps',
         callback = function(state)
-            FpsGui.Enabled = state
-            if state then
-                PingGraphGui.Enabled = false
-                self._flag_registry['UI_Show_Ping_Graph'](false)
-            end
+            FpsPanel.Visible = state
         end,
     })
 
     settings_module:create_checkbox({
         title    = 'Show Ping',
-        flag     = 'UI_Show_Ping_Graph',
+        flag     = 'UI_Show_Ping',
         callback = function(state)
-            PingGraphGui.Enabled = state
+            GraphPanel.Visible = state
+        end,
+    })
+
+    -- Keybinds List Overlay Setup
+    local KeybindOverlayGui = Instance.new("ScreenGui")
+    KeybindOverlayGui.Name = "KeybindOverlay"
+    KeybindOverlayGui.ResetOnSpawn = false
+    KeybindOverlayGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+    KeybindOverlayGui.IgnoreGuiInset = true
+    KeybindOverlayGui.Enabled = false
+    KeybindOverlayGui.Parent = CoreGui
+
+    local KeybindFrame = Instance.new("Frame")
+    KeybindFrame.Name = "OverlayFrame"
+    KeybindFrame.Size = UDim2.new(0, 200, 0, 38)
+    KeybindFrame.Position = UDim2.new(0, 20, 0.5, -19)
+    KeybindFrame.BackgroundColor3 = Color3.fromRGB(8, 8, 10)
+    KeybindFrame.BackgroundTransparency = 0.12
+    KeybindFrame.BorderSizePixel = 0
+    KeybindFrame.Parent = KeybindOverlayGui
+
+    Instance.new("UICorner", KeybindFrame).CornerRadius = UDim.new(0, 7)
+
+    local frameBorder = Instance.new("UIStroke")
+    frameBorder.Color = Color3.fromRGB(28, 28, 34)
+    frameBorder.Thickness = 1
+    frameBorder.Parent = KeybindFrame
+
+    local header = Instance.new("Frame")
+    header.Name = "Header"
+    header.Size = UDim2.new(1, 0, 0, 34)
+    header.Position = UDim2.new(0, 0, 0, 0)
+    header.BackgroundColor3 = Color3.fromRGB(14, 14, 18)
+    header.BorderSizePixel = 0
+    header.ZIndex = 2
+    header.Parent = KeybindFrame
+
+    Instance.new("UICorner", header).CornerRadius = UDim.new(0, 7)
+
+    local headerDivider = Instance.new("Frame")
+    headerDivider.Size = UDim2.new(1, 0, 0, 1)
+    headerDivider.Position = UDim2.new(0, 0, 1, -1)
+    headerDivider.BackgroundColor3 = Color3.fromRGB(28, 28, 34)
+    headerDivider.BorderSizePixel = 0
+    headerDivider.ZIndex = 3
+    headerDivider.Parent = header
+
+    local keyboardIcon = Instance.new("ImageLabel")
+    keyboardIcon.Size = UDim2.new(0, 16, 0, 16)
+    keyboardIcon.Position = UDim2.new(0, 10, 0.5, -8)
+    keyboardIcon.BackgroundTransparency = 1
+    keyboardIcon.Image = "rbxassetid://81598136527047"
+    keyboardIcon.ImageColor3 = Color3.fromRGB(85, 85, 100)
+    keyboardIcon.ZIndex = 3
+    keyboardIcon.Parent = header
+
+    local headerLabel = Instance.new("TextLabel")
+    headerLabel.Size = UDim2.new(1, -36, 1, 0)
+    headerLabel.Position = UDim2.new(0, 32, 0, 0)
+    headerLabel.BackgroundTransparency = 1
+    headerLabel.Text = "KEYBINDS"
+    headerLabel.TextColor3 = Color3.fromRGB(85, 85, 100)
+    headerLabel.TextSize = 10
+    headerLabel.Font = Enum.Font.GothamBold
+    headerLabel.TextXAlignment = Enum.TextXAlignment.Left
+    headerLabel.ZIndex = 3
+    headerLabel.Parent = header
+
+    local dragging = false
+    local dragStart = nil
+    local startPos = nil
+
+    header.InputBegan:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = true
+            dragStart = input.Position
+            startPos = KeybindFrame.Position
+        end
+    end)
+
+    UserInputService.InputChanged:Connect(function(input)
+        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
+            local delta = input.Position - dragStart
+            KeybindFrame.Position = UDim2.new(
+                startPos.X.Scale,
+                startPos.X.Offset + delta.X,
+                startPos.Y.Scale,
+                startPos.Y.Offset + delta.Y
+            )
+        end
+    end)
+
+    UserInputService.InputEnded:Connect(function(input)
+        if input.UserInputType == Enum.UserInputType.MouseButton1 then
+            dragging = false
+        end
+    end)
+
+    local lastBindCount = 0
+    local keybindUpdateTimer = 0
+
+    local function RefreshKeybindOverlay()
+        for _, child in ipairs(KeybindFrame:GetChildren()) do
+            if child.Name == "Row" or child.Name == "Divider" then child:Destroy() end
+        end
+        
+        local validBinds = {}
+        for flag, title in pairs(Library._keybind_list) do
+            local key = Library._config._keybinds[flag]
+            if key then
+                table.insert(validBinds, {flag = flag, title = title, key = string.gsub(tostring(key), "Enum.KeyCode.", "")})
+            end
+        end
+        
+        table.sort(validBinds, function(a, b) return a.title < b.title end)
+        
+        local yBase = 38
+        for i, bind in ipairs(validBinds) do
+            if i > 1 then
+                local div = Instance.new("Frame")
+                div.Name = "Divider"
+                div.Size = UDim2.new(1, -20, 0, 1)
+                div.Position = UDim2.new(0, 10, 0, yBase)
+                div.BackgroundColor3 = Color3.fromRGB(20, 20, 26)
+                div.BorderSizePixel = 0
+                div.Parent = KeybindFrame
+            end
+            
+            local row = Instance.new("Frame")
+            row.Name = "Row"
+            row.Size = UDim2.new(1, -18, 0, 28)
+            row.Position = UDim2.new(0, 9, 0, yBase + 1)
+            row.BackgroundTransparency = 1
+            row.Parent = KeybindFrame
+            
+            local labelText = Instance.new("TextLabel")
+            labelText.Size = UDim2.new(1, -40, 1, 0)
+            labelText.Position = UDim2.new(0, 0, 0, 0)
+            labelText.BackgroundTransparency = 1
+            labelText.Text = bind.title
+            labelText.TextColor3 = Color3.fromRGB(70, 70, 80)
+            labelText.TextSize = 13
+            labelText.Font = Enum.Font.GothamSemibold
+            labelText.TextXAlignment = Enum.TextXAlignment.Left
+            labelText.Parent = row
+            
+            local keyText = Instance.new("TextLabel")
+            keyText.Size = UDim2.new(0, 32, 1, 0)
+            keyText.Position = UDim2.new(1, -32, 0, 0)
+            keyText.BackgroundTransparency = 1
+            keyText.Text = "[" .. bind.key .. "]"
+            keyText.TextColor3 = Color3.fromRGB(70, 70, 80)
+            keyText.TextSize = 12
+            keyText.Font = Enum.Font.GothamBold
+            keyText.TextXAlignment = Enum.TextXAlignment.Right
+            keyText.Parent = row
+            
+            row:SetAttribute("Flag", bind.flag)
+            
+            yBase = yBase + 30
+        end
+        KeybindFrame.Size = UDim2.new(0, 200, 0, 38 + (#validBinds * 30))
+        lastBindCount = #validBinds
+    end
+
+    RunService.RenderStepped:Connect(function(dt)
+        if not KeybindOverlayGui.Enabled then return end
+        keybindUpdateTimer += dt
+        if keybindUpdateTimer >= 0.2 then
+            keybindUpdateTimer = 0
+            local currentCount = 0
+            for flag, key in pairs(Library._config._keybinds) do
+                if Library._keybind_list[flag] then
+                    currentCount += 1
+                end
+            end
+            if currentCount ~= lastBindCount then
+                RefreshKeybindOverlay()
+            else
+                for _, row in ipairs(KeybindFrame:GetChildren()) do
+                    if row.Name == "Row" then
+                        local flag = row:GetAttribute("Flag")
+                        local state = Library._config._flags[flag]
+                        local col = state and Color3.fromRGB(255, 255, 255) or Color3.fromRGB(70, 70, 80)
+                        if row:FindFirstChild("TextLabel") then
+                            row.TextLabel.TextColor3 = col
+                        end
+                        if row:FindFirstChild("TextLabel", 2) then
+                            row:GetChildren()[2].TextColor3 = col
+                        end
+                    end
+                end
+            end
+        end
+    end)
+
+    settings_module:create_checkbox({
+        title    = 'Keybinds List',
+        flag     = 'UI_Show_Keybinds',
+        callback = function(state)
+            KeybindOverlayGui.Enabled = state
             if state then
-                FpsGui.Enabled = false
-                self._flag_registry['UI_Show_Fps_Text'](false)
+                RefreshKeybindOverlay()
             end
         end,
     })
