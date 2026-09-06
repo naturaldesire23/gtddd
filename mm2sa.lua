@@ -1,4 +1,4 @@
--- Unified Angeli UI Library v8.5 (Overlay Drag Fix)
+-- Unified Angeli UI Library v8.6 (Config System & Keybind Sync)
 local UserInputService = cloneref and cloneref(game:GetService('UserInputService')) or game:GetService('UserInputService')
 local TweenService = cloneref and cloneref(game:GetService('TweenService')) or game:GetService('TweenService')
 local HttpService = cloneref and cloneref(game:GetService('HttpService')) or game:GetService('HttpService')
@@ -125,6 +125,7 @@ local Library = {
     _drag_start = nil,
     _container_position = nil,
     _flag_registry = {},
+    _keybind_registry = {},
     _elements = {},
     _notif_side = "Right",
     _notif_opacity = 0.0,
@@ -1294,11 +1295,32 @@ function Library:create_ui()
             task.defer(UpdateModuleScrollIndicator)
 
             if Library._config._keybinds[settings.flag] then
-                local keybind_string = string.gsub(tostring(Library._config._keybinds[settings.flag]), 'Enum.KeyCode.', '')
-                TextLabel.Text = keybind_string
-
                 ModuleManager:connect_keybind()
                 ModuleManager:scale_keybind()
+                Library._keybind_list[settings.flag] = settings.title or "Module"
+                TextLabel.Text = string.gsub(tostring(Library._config._keybinds[settings.flag]), 'Enum.KeyCode.', '')
+            else
+                Library._keybind_list[settings.flag] = nil
+            end
+
+            Library._keybind_registry[settings.flag] = function(key)
+                if key then
+                    TextLabel.Text = string.gsub(tostring(key), 'Enum.KeyCode.', '')
+                    Library._keybind_list[settings.flag] = settings.title or "Module"
+                    if Connections[settings.flag..'_keybind'] then
+                        Connections[settings.flag..'_keybind']:Disconnect()
+                    end
+                    ModuleManager:connect_keybind()
+                    ModuleManager:scale_keybind()
+                else
+                    TextLabel.Text = 'None'
+                    Library._keybind_list[settings.flag] = nil
+                    if Connections[settings.flag..'_keybind'] then
+                        Connections[settings.flag..'_keybind']:Disconnect()
+                        Connections[settings.flag..'_keybind'] = nil
+                    end
+                    ModuleManager:scale_keybind(true)
+                end
             end
 
             Connections[settings.flag..'_input_began'] = Keybind.MouseButton1Click:Connect(function()
@@ -1338,28 +1360,19 @@ function Library:create_ui()
                     if input.KeyCode == Enum.KeyCode.Unknown then return end
 
                     if input.KeyCode == Enum.KeyCode.Backspace then
-                        ModuleManager:scale_keybind(true)
                         Library._config._keybinds[settings.flag] = nil
-                        Library._keybind_list[settings.flag] = nil
-                        TextLabel.Text = 'None'
+                        if Library._keybind_registry[settings.flag] then
+                            Library._keybind_registry[settings.flag](nil)
+                        end
                         cancel_choose()
                         Config:save(game.GameId, Library._config)
                         return
                     end
 
                     Library._config._keybinds[settings.flag] = tostring(input.KeyCode)
-                    Library._keybind_list[settings.flag] = settings.title or "Module"
-
-                    if Connections[settings.flag..'_keybind'] then
-                        Connections[settings.flag..'_keybind']:Disconnect()
-                        Connections[settings.flag..'_keybind'] = nil
+                    if Library._keybind_registry[settings.flag] then
+                        Library._keybind_registry[settings.flag](tostring(input.KeyCode))
                     end
-
-                    ModuleManager:connect_keybind()
-                    ModuleManager:scale_keybind()
-
-                    local keybind_string = string.gsub(tostring(Library._config._keybinds[settings.flag]), 'Enum.KeyCode.', '')
-                    TextLabel.Text = keybind_string
                     
                     cancel_choose()
                     Config:save(game.GameId, Library._config)
@@ -1438,9 +1451,7 @@ function Library:create_ui()
                 KeybindLabel.TextColor3 = Theme.TextSoft
                 KeybindLabel.TextSize = 9
                 KeybindLabel.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
-                KeybindLabel.Text = Library._config._keybinds[settings.flag]
-                    and string.gsub(tostring(Library._config._keybinds[settings.flag]), "Enum.KeyCode.", "")
-                    or "..."
+                KeybindLabel.Text = "..."
                 KeybindLabel.Parent = KeybindBox
                 table.insert(Library._elements, {obj = KeybindLabel, prop = "TextColor3", tKey = "TextSoft"})
 
@@ -1480,6 +1491,21 @@ function Library:create_ui()
                 KnobCorner.CornerRadius = UDim.new(1, 0)
                 KnobCorner.Parent = Knob
 
+                local function resize_keybind_box()
+                    local txt = KeybindLabel.Text
+                    if txt == '...' then
+                        KeybindBox.Size = UDim2.fromOffset(16, 16)
+                        return
+                    end
+                    local fp = Instance.new('GetTextBoundsParams')
+                    fp.Text = txt
+                    fp.Font = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold)
+                    fp.Size = 9
+                    fp.Width = 10000
+                    local fs = TextService:GetTextBoundsAsync(fp)
+                    KeybindBox.Size = UDim2.fromOffset(math.max(16, fs.X + 10), 16)
+                end
+
                 function CheckboxManager:change_state(state)
                     self._state = state
                     TweenService:Create(Toggle, TweenInfo.new(0.28, Enum.EasingStyle.Quint, Enum.EasingDirection.Out), {
@@ -1512,6 +1538,25 @@ function Library:create_ui()
                     settings.callback(CheckboxManager._state)
                 end
 
+                if Library._config._keybinds[settings.flag] then
+                    KeybindLabel.Text = string.gsub(tostring(Library._config._keybinds[settings.flag]), "Enum.KeyCode.", "")
+                    Library._keybind_list[settings.flag] = settings.title or "Toggle"
+                else
+                    Library._keybind_list[settings.flag] = nil
+                end
+                resize_keybind_box()
+
+                Library._keybind_registry[settings.flag] = function(key)
+                    if key then
+                        KeybindLabel.Text = string.gsub(tostring(key), "Enum.KeyCode.", "")
+                        Library._keybind_list[settings.flag] = settings.title or "Toggle"
+                    else
+                        KeybindLabel.Text = "..."
+                        Library._keybind_list[settings.flag] = nil
+                    end
+                    resize_keybind_box()
+                end
+
                 KeybindBox.MouseButton1Click:Connect(function()
                     if Library._choosing_keybind then return end
                     Library._choosing_keybind = true
@@ -1524,6 +1569,7 @@ function Library:create_ui()
                         else
                             KeybindLabel.Text = "..."
                         end
+                        resize_keybind_box()
                         if Connections['checkbox_keybind_choose'] then
                             Connections['checkbox_keybind_choose']:Disconnect()
                             Connections['checkbox_keybind_choose'] = nil
@@ -1548,12 +1594,14 @@ function Library:create_ui()
                         
                         if input.KeyCode == Enum.KeyCode.Backspace then
                             Library._config._keybinds[settings.flag] = nil
-                            Library._keybind_list[settings.flag] = nil
-                            KeybindLabel.Text = "..."
+                            if Library._keybind_registry[settings.flag] then
+                                Library._keybind_registry[settings.flag](nil)
+                            end
                         else
                             Library._config._keybinds[settings.flag] = tostring(input.KeyCode)
-                            Library._keybind_list[settings.flag] = settings.title or "Toggle"
-                            KeybindLabel.Text = string.gsub(tostring(input.KeyCode), "Enum.KeyCode.", "")
+                            if Library._keybind_registry[settings.flag] then
+                                Library._keybind_registry[settings.flag](tostring(input.KeyCode))
+                            end
                         end
                         cancel_choose()
                     end)
@@ -1651,9 +1699,7 @@ function Library:create_ui()
                 KeybindLabel.TextColor3 = Theme.TextSoft
                 KeybindLabel.TextSize = 9
                 KeybindLabel.FontFace = Font.new('rbxasset://fonts/families/GothamSSm.json', Enum.FontWeight.SemiBold, Enum.FontStyle.Normal)
-                KeybindLabel.Text = Library._config._keybinds[settings.flag]
-                    and string.gsub(tostring(Library._config._keybinds[settings.flag]), 'Enum.KeyCode.', '')
-                    or '...'
+                KeybindLabel.Text = '...'
                 KeybindLabel.Parent = KeybindBox
                 table.insert(Library._elements, {obj = KeybindLabel, prop = "TextColor3", tKey = "TextSoft"})
 
@@ -1672,7 +1718,24 @@ function Library:create_ui()
                     KeybindBox.Size = UDim2.fromOffset(math.max(38, fs.X + 12), 16)
                 end
 
+                if Library._config._keybinds[settings.flag] then
+                    KeybindLabel.Text = string.gsub(tostring(Library._config._keybinds[settings.flag]), 'Enum.KeyCode.', '')
+                    Library._keybind_list[settings.flag] = settings.title or "Keybind"
+                else
+                    Library._keybind_list[settings.flag] = nil
+                end
                 resize_keybind_row()
+
+                Library._keybind_registry[settings.flag] = function(key)
+                    if key then
+                        KeybindLabel.Text = string.gsub(tostring(key), 'Enum.KeyCode.', '')
+                        Library._keybind_list[settings.flag] = settings.title or "Keybind"
+                    else
+                        KeybindLabel.Text = '...'
+                        Library._keybind_list[settings.flag] = nil
+                    end
+                    resize_keybind_row()
+                end
 
                 KeybindBox.MouseButton1Click:Connect(function()
                     if Library._choosing_keybind then return end
@@ -1713,12 +1776,14 @@ function Library:create_ui()
 
                         if input.KeyCode == Enum.KeyCode.Backspace then
                             Library._config._keybinds[settings.flag] = nil
-                            Library._keybind_list[settings.flag] = nil
-                            KeybindLabel.Text = '...'
+                            if Library._keybind_registry[settings.flag] then
+                                Library._keybind_registry[settings.flag](nil)
+                            end
                         else
                             Library._config._keybinds[settings.flag] = tostring(input.KeyCode)
-                            Library._keybind_list[settings.flag] = settings.title or "Keybind"
-                            KeybindLabel.Text = string.gsub(tostring(input.KeyCode), 'Enum.KeyCode.', '')
+                            if Library._keybind_registry[settings.flag] then
+                                Library._keybind_registry[settings.flag](tostring(input.KeyCode))
+                            end
                         end
 
                         cancel_choose()
@@ -1987,12 +2052,17 @@ function Library:create_ui()
                 Box.TextSize = 12
                 Box.PlaceholderText = settings.placeholder or ''
                 Box.PlaceholderColor3 = Theme.TextDim
-                Box.Text = settings.value or ''
                 Box.ClearTextOnFocus = false
                 Box.Parent = Holder
                 table.insert(Library._elements, {obj = Box, prop = "BackgroundColor3", tKey = "Control"})
                 table.insert(Library._elements, {obj = Box, prop = "TextColor3", tKey = "Text"})
                 table.insert(Library._elements, {obj = Box, prop = "PlaceholderColor3", tKey = "TextDim"})
+
+                if Library._config._flags[settings.flag] ~= nil then
+                    Box.Text = Library._config._flags[settings.flag]
+                else
+                    Box.Text = settings.value or ''
+                end
 
                 local BoxCorner = Instance.new('UICorner')
                 BoxCorner.CornerRadius = UDim.new(0, 4)
@@ -2009,6 +2079,10 @@ function Library:create_ui()
                 Box.FocusLost:Connect(function()
                     settings.callback(Box.Text)
                 end)
+
+                Library._flag_registry[settings.flag] = function(value)
+                    Box.Text = value or ''
+                end
 
                 return Box
             end
@@ -2407,7 +2481,7 @@ function Library:create_ui()
                     end
                 end
 
-                if Library:flag_type(settings.flag, 'string') then
+                if Library:flag_type(settings.flag, 'string') or Library:flag_type(settings.flag, 'table') then
                     DropdownManager:update(Library._config._flags[settings.flag])
                 elseif settings.options[1] then
                     DropdownManager:update(settings.options[1])
@@ -2416,6 +2490,10 @@ function Library:create_ui()
                 Dropdown.MouseButton1Click:Connect(function()
                     DropdownManager:unfold_settings()
                 end)
+
+                Library._flag_registry[settings.flag] = function(value)
+                    DropdownManager:update(value)
+                end
 
                 return DropdownManager
             end
@@ -2654,6 +2732,110 @@ function Library:build_interface_tab()
 
         Reset.MouseButton1Click:Connect(on_click)
     end
+
+    local config_module = InterfaceTab:create_module({
+        title       = 'Configurations',
+        flag        = 'UI_Config_System',
+        description = 'Manage Settings Profiles',
+        section     = 'right',
+        callback    = function(state) end,
+    })
+
+    local function get_configs()
+        if not isfolder('Fallen/Configs') then makefolder('Fallen/Configs') end
+        if not listfiles then return {} end
+        local files = listfiles('Fallen/Configs')
+        local names = {}
+        for _, file in ipairs(files) do
+            if file:match('%.json$') then
+                local name = file:match('([^/\\]+)%.json$')
+                if name then table.insert(names, name) end
+            end
+        end
+        return names
+    end
+
+    config_module:create_input({
+        title       = 'Profile Name',
+        flag        = 'Config_Input_Name',
+        placeholder = 'New Config Name',
+        value       = '',
+        callback    = function() end
+    })
+
+    local config_dropdown = config_module:create_dropdown({
+        title           = 'Saved Profiles',
+        flag            = 'Config_Saved_List',
+        options         = get_configs(),
+        multi_dropdown  = false,
+        callback        = function() end
+    })
+
+    config_module:create_button({
+        title    = 'Save Profile',
+        callback = function()
+            local name = Library._config._flags['Config_Input_Name']
+            if not name or name:gsub("%s", "") == "" then
+                Library.SendNotification({title = 'Config', text = 'Enter a valid name.', duration = 3})
+                return
+            end
+            if not isfolder('Fallen/Configs') then makefolder('Fallen/Configs') end
+            Config:save('Configs/'..name, Library._config)
+            config_dropdown:refresh(get_configs())
+            config_dropdown:update(name)
+            Library.SendNotification({title = 'Config', text = 'Saved as '..name, duration = 3})
+        end
+    })
+
+    config_module:create_button({
+        title    = 'Load Profile',
+        callback = function()
+            local name = Library._config._flags['Config_Saved_List']
+            if typeof(name) ~= 'string' or name == '' then
+                Library.SendNotification({title = 'Config', text = 'Select a profile to load.', duration = 3})
+                return
+            end
+            local loaded = Config:load('Configs/'..name, { _flags = {}, _keybinds = {} })
+            
+            Library._config._flags = loaded._flags or {}
+            Library._config._keybinds = loaded._keybinds or {}
+
+            for flag, func in pairs(Library._flag_registry) do
+                if Library._config._flags[flag] ~= nil then
+                    pcall(func, Library._config._flags[flag])
+                end
+            end
+
+            for flag, _ in pairs(Library._keybind_list) do
+                if not Library._config._keybinds[flag] then
+                    if Library._keybind_registry[flag] then
+                        Library._keybind_registry[flag](nil)
+                    end
+                end
+            end
+            for flag, key in pairs(Library._config._keybinds) do
+                if Library._keybind_registry[flag] then
+                    Library._keybind_registry[flag](key)
+                end
+            end
+
+            Library.SendNotification({title = 'Config', text = 'Loaded '..name, duration = 3})
+        end
+    })
+
+    config_module:create_button({
+        title    = 'Delete Profile',
+        callback = function()
+            local name = Library._config._flags['Config_Saved_List']
+            if typeof(name) ~= 'string' or name == '' then return end
+            local path = 'Fallen/Configs/'..name..'.json'
+            if isfile(path) then
+                delfile(path)
+                config_dropdown:refresh(get_configs())
+                Library.SendNotification({title = 'Config', text = 'Deleted '..name, duration = 3})
+            end
+        end
+    })
 
     local color_module = InterfaceTab:create_module({
         title       = 'Appearance',
@@ -3272,7 +3454,6 @@ function Library:build_interface_tab()
         end,
     })
 
-    -- Telemetry Overlay Setup
     local StatsOverlayState = {samples={}, maxSamples=24, ping=0, fps=0}
     
     local OverlayGui = Instance.new("ScreenGui")
@@ -3385,7 +3566,6 @@ function Library:build_interface_tab()
     FpsLabel.TextColor3 = Color3.fromRGB(178, 178, 185)
     FpsLabel.TextSize = 12
 
-    -- Drag logic for GraphPanel
     local graphDragging, graphDragStart, graphStartPos = false, nil, nil
     GraphPanel.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -3406,7 +3586,6 @@ function Library:build_interface_tab()
         end
     end)
 
-    -- Drag logic for FpsPanel
     local fpsDragging, fpsDragStart, fpsStartPos = false, nil, nil
     FpsPanel.InputBegan:Connect(function(input)
         if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
@@ -3478,7 +3657,6 @@ function Library:build_interface_tab()
         end,
     })
 
-    -- Keybinds List Overlay Setup
     local KeybindOverlayGui = Instance.new("ScreenGui")
     KeybindOverlayGui.Name = "KeybindOverlay"
     KeybindOverlayGui.ResetOnSpawn = false
